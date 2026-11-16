@@ -1,0 +1,6 @@
+# Bỏ qua sản phẩm build và file dữ liệu người dùng; vẫn giữ seed.json trong Git.
+**/bin/
+**/obj/
+.vs/
+*.user
+**/data/nckh.json

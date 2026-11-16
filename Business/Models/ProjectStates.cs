@@ -1,4 +1,4 @@
-namespace NckhOop.Business.Models;
+namespace QLNCKH_OOP_FINAL.Business.Models;
 
 //moi trang thai tu quyet dinh thao tac nao dc phep
 public interface IProjectState

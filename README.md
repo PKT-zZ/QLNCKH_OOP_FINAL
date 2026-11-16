@@ -47,7 +47,11 @@ Hệ thống bao gồm **8 Use Case cốt lõi**, phân chia thành 2 phân hệ
 Ứng dụng tuân thủ mô hình **3 tầng (3-Tier)** kết hợp nguyên lý **Inversion of Control**: Tầng giao diện và dịch vụ chỉ giao tiếp thông qua giao diện trừu tượng (`Interface`), không phụ thuộc trực tiếp vào tầng lưu trữ tệp.
 
 ```text
-NckhOop/
+QLNCKH_OOP_FINAL/
+├── QLNCKH_OOP_FINAL.csproj       # File cấu hình dự án .NET (Console App)
+├── Program.cs                    # Điểm khởi chạy ứng dụng
+├── config/                       # Thư mục cấu hình đường dẫn dữ liệu
+│   └── appsettings.json          # Cấu hình đường dẫn dataFile và seedFile
 ├── Presentation/                 # TẦNG TRÌNH DIỄN (Giao diện dòng lệnh)
 │   └── ConsoleMenu.cs            # Điều hướng menu, phân vai người dùng, bắt ngoại lệ
 ├── Business/                     # TẦNG NGHIỆP VỤ (Domain Models, Services & Interfaces)
@@ -70,8 +74,7 @@ NckhOop/
 ├── Data/                         # TẦNG DỮ LIỆU (Lưu trữ JSON & Bộ nhớ tạm)
 │   ├── JsonResearchRepository.cs # Xử lý đọc/ghi nckh.json an toàn
 │   ├── InMemoryResearchRepository.cs # Repository in-memory phục vụ kiểm thử
-│   ├── seed.json                 # Dữ liệu mẫu khởi tạo ban đầu
-│   └── appsettings.json          # Cấu hình đường dẫn dữ liệu tương đối
+│   └── seed.json                 # Dữ liệu mẫu khởi tạo ban đầu
 └── docs/                         # Tài liệu thiết kế kỹ thuật
 ```
 
@@ -99,28 +102,28 @@ Kho lưu trữ `JsonResearchRepository` được thiết kế có thuộc tính 
 * Môi trường: Đã cài đặt **.NET 8.0 SDK** (kiểm tra bằng lệnh: `dotnet --version`).
 
 ### 1. Build chương trình
-Từ thư mục chứa solution `NckhOop/`:
+Từ thư mục gốc dự án:
 ```powershell
-dotnet build NckhOop.sln -m:1
+dotnet build
 ```
 
 ### 2. Khởi chạy ứng dụng Console
 ```powershell
-dotnet run --project .\NckhOop\NckhOop.csproj
+dotnet run
 ```
-> *Ghi chú về dữ liệu:* Lần đầu khởi chạy, chương trình tự động tạo tệp `data/nckh.json` cạnh tệp thực thi từ `seed.json`. Để reset toàn bộ dữ liệu về trạng thái mẫu ban đầu, chỉ cần tắt chương trình và xóa tệp `data/nckh.json`.
+> *Ghi chú về dữ liệu:* Lần đầu khởi chạy, chương trình tự động tạo tệp `data/nckh.json` cạnh tệp thực thi từ `Data/seed.json`. Để reset toàn bộ dữ liệu về trạng thái mẫu ban đầu, chỉ cần tắt chương trình và xóa tệp `data/nckh.json`.
 
 ### 3. Chạy bộ kiểm thử tự động (Unit Tests)
 ```powershell
-dotnet run --project .\NckhOop.Tests\NckhOop.Tests.csproj
+dotnet run --project .\QLNCKH_OOP_FINAL.Tests\QLNCKH_OOP_FINAL.Tests.csproj
 ```
 Dự án test là chương trình độc lập, tự động thực thi toàn bộ các ca kiểm tra nghiệp vụ và báo cáo kết quả `PASS` / `FAIL` trực quan trên màn hình console.
 
 ### 4. Đóng gói bản phát hành (Publish)
 ```powershell
-dotnet publish .\NckhOop\NckhOop.csproj -c Release -o .\dist
+dotnet publish -c Release -o .\dist
 ```
-Thư mục `dist/` sẽ chứa tệp thực thi độc lập (`NckhOop.exe` trên Windows) đi kèm các thư mục cấu hình và dữ liệu với đường dẫn tương đối, có thể sao chép sang máy khác chạy ngay.
+Thư mục `dist/` sẽ chứa tệp thực thi độc lập (`QLNCKH_OOP_FINAL.exe` trên Windows) đi kèm các thư mục cấu hình và dữ liệu với đường dẫn tương đối, có thể sao chép sang máy khác chạy ngay.
 
 ---
 
@@ -170,6 +173,6 @@ KỊCH BẢN DEMO: QUẢN LÝ ĐỀ TÀI, PHÊ DUYỆT VÀ PHÂN BỔ KINH PHÍ 
 ## 6. Quy chuẩn Quản lý Mã nguồn (Git Workflow)
 
 * **Nhánh `main`:** Lưu trữ phiên bản ổn định đã tích hợp và vượt qua toàn bộ các ca kiểm thử.
-* **Nhánh `feature/projects-funding`:** Phân hệ quản lý đề tài, kinh phí và các mẫu thiết kế của Thành viên A.
+* **Nhánh `feature/a_quest`:** Phân hệ quản lý đề tài, kinh phí và các mẫu thiết kế của Thành viên A.
 * **Nhánh `feature/evaluation-outputs`:** Phân hệ quản lý nghiệm thu, kết quả đầu ra và báo cáo của Thành viên B.
 * **Quy ước Commit:** Áp dụng chuẩn Conventional Commits (`feat:`, `test:`, `refactor:`, `docs:`, `fix:`) với thông điệp rõ ràng, minh chứng cho từng bước phát triển của dự án.
