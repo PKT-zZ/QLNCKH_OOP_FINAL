@@ -69,7 +69,7 @@ graph TD
 
 ## 2. Sơ đồ UML Lớp Domain tổng thể (Domain Class Diagram)
 
-Sơ đồ bao quát **16 thực thể cụ thể** kế thừa từ phân tích bài toán CSDL cũ, bổ sung lớp trừu tượng `ResearchOutput`, lớp lịch sử trạng thái `ProjectStatusHistory`, và các lớp liên kết (Association Classes) quản lý quan hệ nhiều–nhiều có thuộc tính.
+Sơ đồ bao quát **16 thực thể cụ thể** của bài toán QL NCKH, bổ sung lớp trừu tượng `ResearchOutput`, lớp lịch sử trạng thái `ProjectStatusHistory`, và các lớp liên kết (Association Classes) quản lý quan hệ nhiều–nhiều có thuộc tính.
 
 ### Bảng phân loại 16 thực thể cụ thể:
 1. **Dữ liệu nền**: `Department`, `Researcher`, `DepartmentHeadTerm`, `ProjectCategory`
@@ -261,7 +261,7 @@ classDiagram
 
 ## 3. Sơ đồ chi tiết 3 Design Patterns
 
-Để thỏa mãn yêu cầu "mỗi thành viên 1–2 mẫu thiết kế có tình huống dùng thật, có chạy trong luồng thực tế và có phương án mở rộng":
+Hệ thống áp dụng 3 Design Patterns nhằm đảm bảo tính đóng gói, linh hoạt và khả năng mở rộng:
 - **Thành viên A**: Phụ trách **State Pattern** (Vòng đời đề tài) + phần kinh phí của **Strategy Pattern**.
 - **Thành viên B**: Phụ trách **Factory Method Pattern** (Khởi tạo kết quả đầu ra) + phần đầu ra của **Strategy Pattern**.
 
