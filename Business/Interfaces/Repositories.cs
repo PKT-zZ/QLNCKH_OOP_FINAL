@@ -2,8 +2,7 @@ using QLNCKH_OOP_FINAL.Business.Models;
 
 namespace QLNCKH_OOP_FINAL.Business.Interfaces;
 
-// Đặt hợp đồng ở tầng nghiệp vụ để thay cách lưu dữ liệu mà không sửa các service.
-/// <summary>Truy xuất đơn vị, nhà nghiên cứu và nhiệm kỳ lãnh đạo.</summary>
+//truy xuat don vi, researcher, nhiem ki lanh dao dvi
 public interface IPeopleRepository
 {
     Department? FindDepartment(string id);
@@ -14,7 +13,7 @@ public interface IPeopleRepository
     void Save(Researcher researcher);
 }
 
-//Truy xuất đề tài, loại đề tài và nguồn kinh phí
+//truy xuat de tai, loai de tai, nguon kinh phi
 public interface IProjectRepository
 {
     ProjectCategory? FindCategory(string id);
@@ -25,9 +24,7 @@ public interface IProjectRepository
     void Save(FundingSource source);
 }
 
-// Phần B sẽ cài hợp đồng này từ dữ liệu nghiệm thu và đầu ra thật.
-// Giao diện không tự quyết định bằng hai cờ bool do menu truyền vào.
-/// <summary>Cung cấp bằng chứng cần thiết trước khi hoàn thành đề tài.</summary>
+//cung cap bang chung can thiet truoc khi hoan thanh de tai
 public interface ICompletionEvidence
 {
     bool HasScoredCouncil(string projectId);
