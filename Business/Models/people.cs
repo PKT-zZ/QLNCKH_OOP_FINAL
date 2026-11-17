@@ -1,6 +1,6 @@
 namespace QLNCKH_OOP_FINAL.Business.Models;
 
-//don vi cong tac voi ma va ngay thanh lap const
+//don vi cong tac voi ma va ngay thanh lap chi doc
 public sealed class Department
 {
     public string Id { get; }
@@ -55,7 +55,7 @@ public sealed class Researcher
     }
 }
 
-///1 nhiem ky lanh dao cua 1 researcher tai 1 don vi
+//1 nhiem ky lanh dao cua 1 researcher tai 1 don vi
 public sealed class DepartmentHeadTerm
 {
     public string Id { get; }
