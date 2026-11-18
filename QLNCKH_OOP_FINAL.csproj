@@ -12,6 +12,7 @@
   <ItemGroup>
     <None Update="config\appsettings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Data\seed.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Remove="QLNCKH_OOP_FINAL.Tests/**/*.cs" />
   </ItemGroup>
 
 </Project>

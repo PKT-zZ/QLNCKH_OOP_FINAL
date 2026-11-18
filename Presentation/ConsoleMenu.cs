@@ -13,6 +13,7 @@ public sealed class ConsoleMenu
     private readonly PeopleService _people;
     private readonly ProjectService _projects;
     private readonly FundingService _funding;
+    private readonly ReportService _reports = new();
     private CurrentUserContext _user = new(UserRole.Officer);
 
     public ConsoleMenu()
@@ -36,6 +37,15 @@ public sealed class ConsoleMenu
             var choice = Console.ReadLine()?.Trim();
             if (choice == "0" || choice is null) return;
             try { Dispatch(choice); }
+            // Save có thể đã thay đổi bộ nhớ trước khi ghi JSON thất bại.
+            // Không tiếp tục phiên với trạng thái dữ liệu không còn đáng tin cậy.
+            catch (DataPersistenceException e)
+            {
+                Console.Error.WriteLine($"[Lỗi nghiêm trọng] {e.Message}");
+                Console.Error.WriteLine("Phiên làm việc đã dừng. Kiểm tra file JSON và quyền ghi rồi mở lại ứng dụng.");
+                Environment.ExitCode = 1;
+                return;
+            }
             catch (Exception e) when (e is ArgumentException or InvalidOperationException
                 or UnauthorizedAccessException or FormatException
                 or IOException or InvalidDataException)
@@ -121,8 +131,15 @@ public sealed class ConsoleMenu
 
             // UC01: Lưu nhà nghiên cứu 
             case "4":
-                _people.SaveResearcher(_user, Read("Mã nhà nghiên cứu: "), Read("Mã đơn vị: "),
-                    Read("Họ và tên: "), Read("Email: "));
+                var researcherId = Read("Mã nhà nghiên cứu: ");
+                var existingResearcher = _data.FindResearcher(researcherId);
+                // Khi chỉ sửa thông tin cơ bản, giữ nguyên học hàm/học vị và cờ giảng viên.
+                _people.SaveResearcher(_user, researcherId, Read("Mã đơn vị: "),
+                    Read("Họ và tên: "), Read("Email: "),
+                    academicTitle: existingResearcher?.AcademicTitle,
+                    phone: existingResearcher?.Phone,
+                    organization: existingResearcher?.Organization,
+                    isInstructor: existingResearcher?.IsInstructor ?? false);
                 Console.WriteLine("Đã lưu thông tin nhà nghiên cứu.");
                 break;
 
@@ -169,7 +186,7 @@ public sealed class ConsoleMenu
                 var allocId = Read("Mã đợt phân bổ: ");
                 var allocProjId = Read("Mã đề tài: ");
                 var allocSourceId = Read("Mã nguồn kinh phí (F01/F02): ");
-                var allocAmount = decimal.Parse(Read("Số tiền (VND): "), CultureInfo.InvariantCulture);
+                var allocAmount = ReadPositiveDecimal("Số tiền (VND): ");
                 var allocDate = ReadDate("Ngày phân bổ (yyyy-MM-dd): ");
                 _funding.Allocate(_user, allocId, allocProjId, allocSourceId, allocAmount, allocDate);
                 Console.WriteLine($"Đã phân bổ kinh phí. Tổng kinh phí đề tài [{allocProjId}]: {_funding.TotalForProject(allocProjId):N0} đ");
@@ -202,9 +219,10 @@ public sealed class ConsoleMenu
     }
 
     //Strategy Pattern: menu ko biet thuat toan tinh ben trong
-    private static void PrintReport(IReportStrategy strategy)
+    private void PrintReport(IReportStrategy strategy)
     {
-        var rows = strategy.BuildRows();
+        // Kiểm quyền ở service, không gọi BuildRows() trực tiếp từ Presentation.
+        var rows = _reports.Generate(_user, strategy);
         Console.WriteLine($"\n══ {strategy.Title.ToUpperInvariant()} ══");
         if (!rows.Any()) { Console.WriteLine("  Chưa có dữ liệu để tổng hợp."); return; }
         Console.WriteLine($"  {"Mã",-8} {"Tên",-38} {"Tổng",18} {"Ghi chú"}");
@@ -219,6 +237,19 @@ public sealed class ConsoleMenu
     {
         Console.Write(prompt);
         return Console.ReadLine()?.Trim() ?? throw new InvalidOperationException("Không có dữ liệu nhập.");
+    }
+
+    private static decimal ReadPositiveDecimal(string prompt)
+    {
+        while (true)
+        {
+            var input = Read(prompt);
+            if (decimal.TryParse(input, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)
+                && amount > 0)
+                return amount;
+
+            Console.WriteLine("[Lỗi] Số tiền phải là số dương hợp lệ trong phạm vi kiểu decimal. Vui lòng nhập lại.");
+        }
     }
 
     private static DateOnly ReadDate(string prompt) =>
