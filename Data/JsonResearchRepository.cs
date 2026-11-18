@@ -15,6 +15,7 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
 
     private readonly string _dataPath;
     private readonly Dictionary<string, JsonElement>? _otherModules;
+    private bool _persistenceFailed;
 
     //Đọc cấu hình cạnh file chạy, tạo dữ liệu từ seed nếu mở ứng dụng lần đầu
     public JsonResearchRepository()
@@ -45,11 +46,17 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
         }
     }
 
-    //Service gọi Save sau khi sửa; lớp này cập nhật bộ nhớ rồi ghi toàn bộ snapshot
-    public override void Save(Department value) { base.Save(value); Persist(); }
-    public override void Save(Researcher value) { base.Save(value); Persist(); }
-    public override void Save(ResearchProject value) { base.Save(value); Persist(); }
-    public override void Save(FundingSource value) { base.Save(value); Persist(); }
+    // Nếu Persist lỗi, bộ nhớ có thể khác file. Cấm mọi Save tiếp theo trong phiên
+    public override void Save(Department value) { EnsureWritable(); base.Save(value); Persist(); }
+    public override void Save(Researcher value) { EnsureWritable(); base.Save(value); Persist(); }
+    public override void Save(ResearchProject value) { EnsureWritable(); base.Save(value); Persist(); }
+    public override void Save(FundingSource value) { EnsureWritable(); base.Save(value); Persist(); }
+
+    private void EnsureWritable()
+    {
+        if (_persistenceFailed)
+            throw new DataPersistenceException("Phiên lưu dữ liệu trước đó đã thất bại; phải khởi động lại ứng dụng.");
+    }
 
     //Ghép đường dẫn với thư mục ứng dụng để không phụ thuộc nơi gọi lệnh
     private static string RelativeToApp(string? configuredPath)
@@ -62,6 +69,7 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
     //Khôi phục theo thứ tự quan hệ và từ chối tham chiếu không tồn tại
     private void Load(AppSnapshot snapshot)
     {
+        ValidateSnapshot(snapshot);
         foreach (var department in snapshot.Departments) base.Save(department);
         foreach (var researcher in snapshot.Researchers)
         {
@@ -90,28 +98,78 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
         }
     }
 
-    //Ghi vào file tạm trước, rồi thay file chính để hạn chế dữ liệu bị ghi dở
+    // Từ chối snapshot có mã/email trùng trước khi Load thay đổi bộ nhớ
+    private static void ValidateSnapshot(AppSnapshot snapshot)
+    {
+        if (snapshot.Departments is null || snapshot.Researchers is null ||
+            snapshot.HeadTerms is null || snapshot.Categories is null ||
+            snapshot.Projects is null || snapshot.Sources is null)
+            throw new InvalidDataException("Snapshot thiếu một hoặc nhiều danh sách bắt buộc.");
+
+        if (snapshot.Departments.Any(x => x is null) ||
+            snapshot.Researchers.Any(x => x is null) ||
+            snapshot.HeadTerms.Any(x => x is null) ||
+            snapshot.Categories.Any(x => x is null) ||
+            snapshot.Sources.Any(x => x is null) ||
+            snapshot.Projects.Any(x => x is null || x.Members is null ||
+                                       x.Allocations is null || x.History is null))
+            throw new InvalidDataException("Snapshot chứa bản ghi hoặc danh sách con null.");
+
+        if (snapshot.Projects.Any(p => p.Members.Any(m => m is null) ||
+                                       p.Allocations.Any(a => a is null) ||
+                                       p.History.Any(h => h is null)))
+            throw new InvalidDataException("Đề tài chứa bản ghi thành viên, phân bổ hoặc lịch sử null.");
+
+        // So sánh không phân biệt hoa/thường, loại bỏ khoảng trắng đầu/cuối khi kiểm trùng
+        RequireUnique(snapshot.Departments.Select(x => x.Id), "mã đơn vị");
+        RequireUnique(snapshot.Researchers.Select(x => x.Id), "mã nhà nghiên cứu");
+        RequireUnique(snapshot.Researchers.Select(x => x.Email), "email nhà nghiên cứu");
+        RequireUnique(snapshot.HeadTerms.Select(x => x.Id), "mã nhiệm kỳ lãnh đạo");
+        RequireUnique(snapshot.Categories.Select(x => x.Id), "mã loại đề tài");
+        RequireUnique(snapshot.Sources.Select(x => x.Id), "mã nguồn kinh phí");
+        RequireUnique(snapshot.Projects.Select(x => x.Id), "mã đề tài");
+
+        // Mã phân bổ là duy nhất trong toàn hệ thống, không chỉ trong một đề tài
+        RequireUnique(snapshot.Projects.SelectMany(p => p.Allocations.Select(a => a.Id)),
+            "mã phân bổ kinh phí");
+    }
+
+    private static void RequireUnique(IEnumerable<string?> values, string label)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in values)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                throw new InvalidDataException($"Dữ liệu có {label} rỗng.");
+            if (!seen.Add(raw.Trim()))
+                throw new InvalidDataException($"Dữ liệu có {label} trùng lặp: '{raw.Trim()}'.");
+        }
+    }
+
+    // Ghi vào file tạm, thay file chính khi ghi xong. Nếu lỗi, dừng phiên ngay
     private void Persist()
     {
-        var snapshot = new AppSnapshot
-        {
-            Departments = Departments.ToList(),
-            Researchers = Researchers.ToList(),
-            HeadTerms = HeadTerms.ToList(),
-            Categories = Categories.ToList(),
-            Projects = Projects.Select(ProjectData.FromModel).ToList(),
-            Sources = Sources.ToList(),
-            OtherModules = _otherModules
-        };
         var tempPath = _dataPath + ".tmp";
         try
         {
+            var snapshot = new AppSnapshot
+            {
+                Departments = Departments.ToList(),
+                Researchers = Researchers.ToList(),
+                HeadTerms = HeadTerms.ToList(),
+                Categories = Categories.ToList(),
+                Projects = Projects.Select(ProjectData.FromModel).ToList(),
+                Sources = Sources.ToList(),
+                OtherModules = _otherModules
+            };
             File.WriteAllText(tempPath, JsonSerializer.Serialize(snapshot, JsonOptions));
             File.Move(tempPath, _dataPath, true);
         }
-        finally
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            if (File.Exists(tempPath)) File.Delete(tempPath);
+            _persistenceFailed = true;
+            throw new DataPersistenceException(
+                "Không ghi được JSON; trạng thái bộ nhớ có thể khác dữ liệu trên đĩa.", ex);
         }
     }
 
@@ -159,4 +217,10 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
             History = project.History.ToList()
         };
     }
+}
+
+public sealed class DataPersistenceException : IOException
+{
+    public DataPersistenceException(string message, Exception? innerException = null)
+        : base(message, innerException) { }
 }
