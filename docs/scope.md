@@ -1,41 +1,40 @@
-# Phạm vi Hệ thống & Đặc tả Use Case — Hệ thống Quản lý NCKH
+# Phạm vi và đặc tả ca sử dụng
 
 ## 1. Mô tả bài toán
 
-Hệ thống Quản lý Nghiên cứu Khoa học (NCKH) là ứng dụng phần mềm hỗ trợ các quy trình hành chính liên quan đến đề tài nghiên cứu khoa học tại trường đại học. Hệ thống giải quyết bài toán quản lý toàn bộ vòng đời của một đề tài: từ khâu đề xuất, phê duyệt, cấp kinh phí, nghiệm thu kết quả đến ghi nhận sản phẩm khoa học và kết xuất báo cáo thống kê.
-
-Phạm vi bài OOP tập trung vào việc áp dụng các nguyên lý lập trình hướng đối tượng và mẫu thiết kế vào nghiệp vụ trên. Hệ thống mô phỏng quy trình chứ không phải hệ thống hành chính thực tế của trường.
+Bài tập lớn mô phỏng quy trình quản lý đề tài nghiên cứu khoa học tại trường đại học. Phạm vi thiết kế gồm đề xuất, phê duyệt, cấp kinh phí, nghiệm thu, ghi nhận đầu ra và tổng hợp báo cáo. Menu hiện có UC01–UC04 và hai báo cáo kinh phí thuộc UC08. Các luồng hội đồng, nghiệm thu và đầu ra ở mục 3 là thiết kế tích hợp. Xem [README](../README.md) để chạy chương trình và [UML](uml.md) để đối chiếu mô hình.
 
 ---
 
-## 2. Tác nhân hệ thống (Actors)
+## 2. Tác nhân
 
-Hệ thống có **3 tác nhân** tương tác qua giao diện console. Việc chọn vai trò là mô phỏng để demo phân quyền, không phải cơ chế đăng nhập thật.
+Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách service kiểm tra quyền. Xác thực tài khoản nằm ngoài phạm vi bài tập lớn.
 
 | Tác nhân | Ký hiệu trong code | Vai trò trong hệ thống |
 |---|---|---|
-| **Nhà nghiên cứu** | `UserRole.Researcher` | Người đề xuất đề tài, khai báo kết quả nghiên cứu (bài báo, sản phẩm). Chỉ được thao tác với đề tài có tên mình trong danh sách. |
-| **Chuyên viên quản lý KH** | `UserRole.Officer` | Người điều phối hành chính: gán chủ nhiệm, phê duyệt đề tài, cấp phát kinh phí, lập hội đồng và nghiệm thu kết thúc đề tài. |
-| **Chủ tịch hội đồng** | `UserRole.CouncilChair` | Nhà nghiên cứu được chỉ định chủ trì hội đồng nghiệm thu. Chỉ Chủ tịch của hội đồng đó mới được nhập điểm đánh giá. |
+| **Nhà nghiên cứu** | `UserRole.Researcher` | Đề xuất đề tài bằng mã nhà nghiên cứu đã có. Khi tích hợp UC07, chỉ ghi nhận đầu ra cho đề tài mình tham gia. |
+| **Chuyên viên quản lý khoa học** | `UserRole.Officer` | Quản lý hồ sơ đơn vị và nhà nghiên cứu, gán thành viên, duyệt đề tài, cấp kinh phí và xem báo cáo kinh phí. Phụ trách lập hội đồng và xác nhận nghiệm thu trong thiết kế tích hợp. |
+| **Chủ tịch hội đồng** | `UserRole.CouncilChair` | Ghi điểm cho hội đồng mình chủ trì trong thiết kế UC06. Menu hiện cho phép chọn vai trò để minh họa phân quyền. |
 
 ---
 
-## 3. Phạm vi 8 Use Case
+## 3. Tám ca sử dụng
 
-### Phân hệ A — Thành viên A phụ trách
+### Phân hệ A — Nguyễn Khánh Toàn
 
 #### UC01: Quản lý đơn vị và nhân sự
 - **Tác nhân:** Chuyên viên.
-- **Mô tả:** Thêm mới hoặc cập nhật thông tin Khoa/Phòng ban (`Department`) và hồ sơ nhà nghiên cứu (`Researcher`). Xem lịch sử nhiệm kỳ Trưởng khoa.
+- **Mô tả:** Thêm đơn vị hoặc sửa tên đơn vị đã có, lưu hồ sơ nhà nghiên cứu và tra cứu lịch sử lãnh đạo từ dữ liệu đã nạp.
 - **Dữ liệu vào:** Mã, tên, ngày thành lập (đơn vị); Mã, mã đơn vị, họ tên, email (nhà nghiên cứu).
-- **Điều kiện hợp lệ:** Email phải đúng định dạng và là duy nhất trong hệ thống; đơn vị phải tồn tại khi tạo nhà nghiên cứu.
+- **Điều kiện hợp lệ:** Mã đơn vị và mã nhà nghiên cứu được bỏ khoảng trắng hai đầu trước khi tra hồ sơ. Đơn vị tham chiếu phải tồn tại. Email phải có dấu `@` ở giữa chuỗi và duy nhất giữa các hồ sơ, so sánh không phân biệt hoa thường.
+- **Khi cập nhật:** Giữ nguyên ngày thành lập của đơn vị đã có. Menu giữ học hàm hoặc học vị, số điện thoại, tổ chức và cờ giảng viên khi sửa hồ sơ cơ bản. Caller gọi trực tiếp `SaveResearcher` cần truyền lại các trường tùy chọn muốn giữ.
 - **Hàm điều khiển:** `PeopleService.SaveDepartment()`, `PeopleService.SaveResearcher()`, `PeopleService.GetHeadHistory()`.
 
 #### UC02: Đề xuất đề tài nghiên cứu
 - **Tác nhân:** Nhà nghiên cứu.
 - **Mô tả:** Nhà nghiên cứu khởi tạo hồ sơ đề tài mới, chọn loại đề tài và khai báo khung thời gian thực hiện.
 - **Dữ liệu vào:** Mã đề tài, loại đề tài (C01/C02), tên đề tài, ngày bắt đầu, ngày kết thúc dự kiến.
-- **Điều kiện hợp lệ:** Tên không rỗng; ngày kết thúc (nếu có) không trước ngày bắt đầu; mã đề tài chưa tồn tại trong hệ thống; người đề xuất phải có hồ sơ nhà nghiên cứu hợp lệ.
+- **Điều kiện hợp lệ:** Người đề xuất và loại đề tài phải có trong hệ thống. Tên đề tài không được rỗng. Ngày kết thúc có thể bỏ trống hoặc phải từ ngày bắt đầu trở đi. Mã đề tài được bỏ khoảng trắng ở hai đầu rồi kiểm tra trùng, không phân biệt hoa thường.
 - **Dữ liệu ra:** Đề tài ở trạng thái `Pending`.
 - **Hàm điều khiển:** `ProjectService.ProposeProject()`.
 
@@ -44,7 +43,7 @@ Hệ thống có **3 tác nhân** tương tác qua giao diện console. Việc c
 - **Mô tả:** Gán từng thành viên (vai trò Chủ nhiệm hoặc Thành viên) vào đề tài đang ở trạng thái Pending, sau đó phê duyệt để kích hoạt đề tài.
 - **Dữ liệu vào (gán):** Mã đề tài, mã nhà nghiên cứu, vai trò (Leader/Member).
 - **Dữ liệu vào (duyệt):** Mã đề tài.
-- **Điều kiện hợp lệ:** Nhà nghiên cứu phải tồn tại; mỗi người chỉ được gán một vai trò trong đề tài; đề tài phải có **đúng 1 Chủ nhiệm** trước khi duyệt; chỉ được duyệt đề tài đang ở `Pending`.
+- **Điều kiện hợp lệ:** Chỉ gán người và duyệt khi đề tài ở `Pending`. Nhà nghiên cứu phải tồn tại và chỉ được gán một lần trong đề tài. Đề tài có tối đa một chủ nhiệm trong lúc lập danh sách và phải có đúng một chủ nhiệm để được duyệt.
 - **Dữ liệu ra:** Đề tài chuyển sang trạng thái `Active`; lịch sử chuyển trạng thái được ghi nhận.
 - **Hàm điều khiển:** `ProjectService.AssignMember()`, `ProjectService.Approve()`.
 
@@ -53,13 +52,15 @@ Hệ thống có **3 tác nhân** tương tác qua giao diện console. Việc c
 - **Mô tả:** Khai báo các nguồn kinh phí (quỹ trường, ngân sách nhà nước, tài trợ ngoài). Cấp tiền từng đợt cho đề tài, có thể cấp nhiều lần từ cùng một nguồn hoặc từ nhiều nguồn khác nhau.
 - **Dữ liệu vào (nguồn):** Mã nguồn, tên nguồn, loại nguồn.
 - **Dữ liệu vào (phân bổ):** Mã đợt, mã đề tài, mã nguồn, số tiền, ngày cấp.
-- **Điều kiện hợp lệ:** Số tiền mỗi đợt phải lớn hơn 0; mã phân bổ duy nhất trên toàn hệ thống; đề tài và nguồn kinh phí phải tồn tại.
-- **Dữ liệu ra:** Tổng kinh phí của đề tài được cập nhật tích lũy theo từng đợt.
+- **Điều kiện hợp lệ:** Mã nguồn mới và mã đợt cấp được bỏ khoảng trắng hai đầu trước khi tra trùng, không phân biệt hoa thường. Mã đợt cấp phải duy nhất trên tất cả đề tài. Đề tài và nguồn phải tồn tại. Số tiền dùng `decimal`, phải dương và không làm tổng kinh phí toàn hệ thống vượt phạm vi của kiểu số này.
+- **Dữ liệu ra:** Chương trình lưu khoản cấp và hiển thị tổng kinh phí tính từ các đợt của đề tài.
 - **Hàm điều khiển:** `FundingService.SaveSource()`, `FundingService.Allocate()`, `FundingService.TotalForProject()`.
 
 ---
 
-### Phân hệ B — Thành viên B phụ trách
+### Phân hệ B — NGUYỄN VIỆT HOÀNG
+
+UC05–UC07 và phần đầu ra của UC08 mô tả luồng dự kiến. Mã hiện tại đã có `ProjectService.Complete` và `ICompletionEvidence` để thử điều kiện hoàn thành với bằng chứng giả lập. Menu chưa nối luồng này với dữ liệu hội đồng và đầu ra thật.
 
 #### UC05: Thành lập hội đồng nghiệm thu
 - **Tác nhân:** Chuyên viên.
@@ -70,26 +71,25 @@ Hệ thống có **3 tác nhân** tương tác qua giao diện console. Việc c
 #### UC06: Chấm điểm và nghiệm thu hoàn thành đề tài
 - **Tác nhân:** Chủ tịch hội đồng (ghi điểm), Chuyên viên (xác nhận hoàn thành).
 - **Mô tả:** Chủ tịch hội đồng nhập điểm đánh giá. Sau khi có điểm và ít nhất một kết quả đầu ra, Chuyên viên xác nhận nghiệm thu và chuyển đề tài sang `Completed`.
-- **Điều kiện hợp lệ:** Điểm trong khoảng `[0, 10]`; chỉ Chủ tịch của chính hội đồng đó mới được ghi điểm; đề tài cần có điểm hội đồng **và** ít nhất 1 đầu ra trước khi hoàn thành.
+- **Điều kiện hợp lệ:** Chỉ Chủ tịch của hội đồng đó được ghi điểm trong khoảng `[0, 10]`. Chuyên viên chỉ hoàn thành đề tài đang `Active` khi đã có điểm hội đồng và ít nhất một đầu ra.
 - **Hàm điều khiển:** `EvaluationService.RecordScore()`, `ProjectService.Complete(user, projectId, ICompletionEvidence)`.
 
 #### UC07: Ghi nhận kết quả đầu ra nghiên cứu
 - **Tác nhân:** Nhà nghiên cứu.
 - **Mô tả:** Nhà nghiên cứu ghi nhận bài báo khoa học (kèm danh sách tác giả, DOI, nhà xuất bản) hoặc sản phẩm bàn giao thực tế, liên kết với đề tài.
-- **Điều kiện hợp lệ:** Bài báo cần có ít nhất 1 tác giả; thứ tự tác giả không trùng; đúng 1 tác giả liên hệ; DOI là duy nhất nếu được nhập; số lượng sản phẩm bàn giao phải lớn hơn 0.
+- **Điều kiện hợp lệ:** Người ghi nhận phải tham gia đề tài. Bài báo có ít nhất một tác giả và đúng một tác giả liên hệ. Thứ tự tác giả không trùng. DOI phải duy nhất nếu có. Sản phẩm có loại hợp lệ và số lượng lớn hơn 0.
 - **Hàm điều khiển:** `OutputService.AddPaper()`, `OutputService.AddDeliverable()`.
 
 #### UC08: Báo cáo tổng hợp và tra cứu
 - **Tác nhân:** Chuyên viên.
-- **Mô tả:** Tra cứu danh sách đề tài theo trạng thái. Xem báo cáo tổng hợp kinh phí theo đề tài hoặc theo nguồn tài trợ; thống kê kết quả đầu ra theo đề tài.
-- **Dữ liệu ra:** Bảng báo cáo dạng dòng `ReportRow(Key, Label, Value, Unit, Detail)`.
-- **Hàm điều khiển:** `ReportService.Generate(IReportStrategy)`.
+- **Đã có:** Menu 11 và 12 tổng hợp kinh phí theo đề tài và theo nguồn. Menu 1 hiển thị danh sách đề tài và trạng thái hiện tại.
+- **Dự kiến tích hợp:** Lọc danh sách theo trạng thái và thống kê kết quả đầu ra theo đề tài. Thống kê theo loại sản phẩm là hướng mở rộng.
+- **Dữ liệu ra:** Bảng báo cáo dạng dòng `ReportRow(Key, Label, Value, Unit, Detail)`. Có thể bỏ trống `Detail`.
+- **Hàm điều khiển:** `ReportService.Generate(CurrentUserContext user, IReportStrategy strategy)` kiểm quyền trước khi gọi `strategy.BuildRows()`.
 
 ---
 
-## 4. Ngoài phạm vi (Out of Scope)
-
-Các tính năng sau đây được xác định **không nằm trong phạm vi** của đồ án này:
+## 4. Ngoài phạm vi
 
 - Giao diện đồ họa (GUI) hoặc giao diện web.
 - Cơ chế xác thực người dùng thực tế (tài khoản, mật khẩu, JWT...). Việc "đăng nhập" trong hệ thống chỉ là chọn vai trò để demo phân quyền.
@@ -98,4 +98,4 @@ Các tính năng sau đây được xác định **không nằm trong phạm vi*
 - Quản lý nhiều học kỳ, nhiều trường hoặc cấp vùng miền.
 - Quy trình thanh toán, giải ngân hay chứng từ tài chính chi tiết.
 - Chức năng upload/đính kèm file báo cáo hay tài liệu dạng PDF.
-- CRUD đầy đủ cho mọi danh mục (loại đề tài, loại sản phẩm được định nghĩa sẵn trong seed).
+- CRUD đầy đủ cho mọi danh mục. Loại đề tài hiện lấy từ seed. Loại sản phẩm là danh mục dự kiến khi tích hợp đầu ra.

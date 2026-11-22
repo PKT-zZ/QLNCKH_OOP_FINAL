@@ -2,10 +2,8 @@ using QLNCKH_OOP_FINAL.Business.Interfaces;
 using QLNCKH_OOP_FINAL.Business.Models;
 namespace QLNCKH_OOP_FINAL.Business.Services;
 
-//xu ly de xuat, gan thanh vien, duyet, hoan thanh de tai
 public sealed class ProjectService(IPeopleRepository people, IProjectRepository projects)
 {
-    //researcher tao de tai, auto cho duyet
     public ResearchProject ProposeProject(CurrentUserContext user, string id, string categoryId,
         string title, DateOnly startDate, DateOnly? endDate)
     {
@@ -14,14 +12,15 @@ public sealed class ProjectService(IPeopleRepository people, IProjectRepository 
             throw new UnauthorizedAccessException("Hồ sơ nhà nghiên cứu không tồn tại.");
         if (projects.FindCategory(categoryId) is null)
             throw new InvalidOperationException("Loại đề tài không tồn tại.");
-        if (projects.FindProject(id) is not null)
+        // Dùng cùng mã đã chuẩn hóa để tra trùng và tạo đề tài.
+        var normalizedId = Guard.Required(id, nameof(id));
+        if (projects.FindProject(normalizedId) is not null)
             throw new InvalidOperationException("Mã đề tài đã tồn tại.");
-        var project = new ResearchProject(id, categoryId, title, startDate, endDate);
+        var project = new ResearchProject(normalizedId, categoryId, title, startDate, endDate);
         projects.Save(project);
         return project;
     }
 
-    //chuyen vien gan thanh vien
     public void AssignMember(CurrentUserContext user, string projectId, string researcherId, ProjectRole role)
     {
         Access.Require(user, UserRole.Officer);
@@ -32,7 +31,6 @@ public sealed class ProjectService(IPeopleRepository people, IProjectRepository 
         projects.Save(project);
     }
 
-    //duyet de tai, luu trang thai moi
     public void Approve(CurrentUserContext user, string projectId)
     {
         Access.Require(user, UserRole.Officer);
@@ -41,7 +39,6 @@ public sealed class ProjectService(IPeopleRepository people, IProjectRepository 
         projects.Save(project);
     }
 
-    //hoan thanh voi dieu kien nghiem thu
     public void Complete(CurrentUserContext user, string projectId, ICompletionEvidence evidence)
     {
         Access.Require(user, UserRole.Officer);
@@ -53,7 +50,6 @@ public sealed class ProjectService(IPeopleRepository people, IProjectRepository 
         projects.Save(project);
     }
 
-    //lay de tai
     public ResearchProject RequiredProject(string id) =>
         projects.FindProject(id) ?? throw new InvalidOperationException("Đề tài không tồn tại.");
 }

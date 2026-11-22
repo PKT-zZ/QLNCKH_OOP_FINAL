@@ -2,12 +2,11 @@ using QLNCKH_OOP_FINAL.Business.Interfaces;
 
 namespace QLNCKH_OOP_FINAL.Business.Services;
 
-//chien luoc cong tong kinh phi da cap theo nguon
 public sealed class FundingBySourceStrategy(IProjectRepository projects) : IReportStrategy
 {
     public string Title => "Tổng kinh phí theo nguồn";
 
-    //nguon phat sinh phan bo co 1 dong, chua cap tien thi 0 tao dong
+    // Nguồn chưa cấp kinh phí không xuất hiện trong báo cáo.
     public IReadOnlyList<ReportRow> BuildRows() => projects.Projects
         .SelectMany(project => project.Allocations)
         .GroupBy(allocation => allocation.SourceId, StringComparer.OrdinalIgnoreCase)

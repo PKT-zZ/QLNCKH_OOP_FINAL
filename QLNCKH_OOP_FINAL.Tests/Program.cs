@@ -29,7 +29,19 @@ internal static class ATests
             ("A-PERM", "Service tự kiểm tra vai trò", ServiceAuthorization),
             ("A-BRIDGE", "Hoàn thành qua bằng chứng do B cung cấp", CompletionBridge),
             ("A-SOURCE", "Strategy cộng kinh phí theo nguồn", FundingBySource),
-            ("A-VALID", "Dữ liệu sai không làm thay đổi đối tượng", InvalidInputDoesNotMutate)
+            ("A-VALID", "Dữ liệu sai không làm thay đổi đối tượng", InvalidInputDoesNotMutate),
+            ("A-ID-PROJECT-SPACE", "Mã đề tài trùng có khoảng trắng giữ nguyên hồ sơ", () => RejectDuplicateProject(" P003 ")),
+            ("A-ID-PROJECT-CASE", "Mã đề tài trùng khác hoa thường giữ nguyên hồ sơ", () => RejectDuplicateProject("p003")),
+            ("A-ID-PROJECT-NEW", "Mã đề tài mới được loại khoảng trắng và giữ nguyên hoa thường", AcceptTrimmedProject),
+            ("A-ID-FUND-SAME", "Mã phân bổ trùng trong cùng đề tài giữ nguyên tổng", () => RejectDuplicateAllocation(" A004 ", "P003")),
+            ("A-ID-FUND-CROSS", "Mã phân bổ trùng có khoảng trắng ở đề tài khác giữ nguyên tổng", () => RejectDuplicateAllocation(" A004 ", "P004")),
+            ("A-ID-FUND-CASE", "Mã phân bổ khác hoa thường ở đề tài khác giữ nguyên tổng", () => RejectDuplicateAllocation("a004", "P004")),
+            ("A-ID-FUND-NEW", "Hai đợt hợp lệ cùng nguồn được chuẩn hóa và cộng đúng", AcceptDistinctAllocations),
+            ("A-ID-SOURCE-SPACE", "Mã nguồn trùng có khoảng trắng giữ nguyên hồ sơ", RejectDuplicateSource),
+            ("A-REVIEW-DEPARTMENT", "Cập nhật mã đơn vị có khoảng trắng giữ nguyên ngày thành lập", UpdateDepartmentWithPaddedId),
+            ("A-REVIEW-RESEARCHER", "Cập nhật mã nhà nghiên cứu có khoảng trắng giữ nguyên hồ sơ", UpdateResearcherWithPaddedId),
+            ("A-REVIEW-FUND-RANGE", "Từ chối khoản cấp làm tổng kinh phí vượt phạm vi decimal", RejectFundingOverflow),
+            ("A-REVIEW-STATE", "Gọi sai đối tượng State không làm đổi trạng thái hoặc lịch sử", RejectMismatchedState)
         };
 
         var failures = 0;
@@ -232,4 +244,186 @@ internal static class ATests
             x.People.SaveResearcher(Officer, "R004", "D01", "Người mới", " "));
         Check(x.Data.FindResearcher("R004") is null, "Email rỗng vẫn tạo nhà nghiên cứu.");
     }
+
+    // Giữ một đề tài đã duyệt để phát hiện cả việc thay đối tượng lẫn mất trạng thái.
+    private static void RejectDuplicateProject(string duplicateId)
+    {
+        var x = Setup();
+        var original = NewProject(x.Projects, "P003");
+        x.Projects.AssignMember(Officer, "P003", "R001", ProjectRole.Leader);
+        x.Projects.Approve(Officer, "P003");
+        var previousTitle = original.Title;
+
+        var rejected = false;
+        try
+        {
+            x.Projects.ProposeProject(Researcher, duplicateId, "C01", "Tên thay thế", new DateOnly(2026, 11, 6), null);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Check(ex.Message == "Mã đề tài đã tồn tại.", ex.Message);
+            rejected = true;
+        }
+
+        var stored = x.Data.FindProject("P003");
+        Check(x.Data.Projects.Count == 1 && ReferenceEquals(stored, original) &&
+              original.Title == previousTitle && original.Status == ProjectStatus.Active &&
+              original.Members.Count == 1 && original.History.Count == 1,
+            $"Hồ sơ P003 trước: {previousTitle}, Active; sau: {stored?.Title}, {stored?.Status}; số đề tài: {x.Data.Projects.Count}.");
+        Check(rejected, "Đề xuất có mã trùng phải bị từ chối.");
+    }
+
+    private static void AcceptTrimmedProject()
+    {
+        var x = Setup();
+        var created = NewProject(x.Projects, " p003 ");
+        Check(created.Id == "p003" && created.Status == ProjectStatus.Pending &&
+              x.Data.Projects.Count == 1 && ReferenceEquals(x.Data.FindProject("P003"), created),
+            "Đề tài mới phải dùng mã đã loại khoảng trắng và được lưu đúng một lần.");
+    }
+
+    // Hai đề tài giúp kiểm tra tính duy nhất của mã phân bổ trên toàn kho.
+    private static void RejectDuplicateAllocation(string duplicateId, string targetProjectId)
+    {
+        var x = Setup();
+        var first = NewProject(x.Projects, "P003");
+        var second = NewProject(x.Projects, "P004");
+        var day = new DateOnly(2026, 11, 7);
+        var original = x.Funding.Allocate(Officer, "A004", first.Id, "F01", 250_000m, day);
+
+        var rejected = false;
+        try
+        {
+            x.Funding.Allocate(Officer, duplicateId, targetProjectId, "F01", 150_000m, day);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Check(ex.Message == "Mã phân bổ đã tồn tại." ||
+                  ex.Message == "Mã phân bổ đã tồn tại trong đề tài.", ex.Message);
+            rejected = true;
+        }
+
+        Check(first.Allocations.Count == 1 && ReferenceEquals(first.Allocations[0], original) &&
+              first.TotalFunding == 250_000m && second.Allocations.Count == 0 && second.TotalFunding == 0m,
+            $"Tổng trước 250000/0, sau {first.TotalFunding}/{second.TotalFunding}; mã P003: {string.Join(", ", first.Allocations.Select(a => a.Id))}; mã P004: {string.Join(", ", second.Allocations.Select(a => a.Id))}.");
+        Check(rejected, "Phân bổ có mã trùng phải bị từ chối.");
+    }
+
+    private static void AcceptDistinctAllocations()
+    {
+        var x = Setup();
+        var project = NewProject(x.Projects, "P003");
+        var day = new DateOnly(2026, 11, 7);
+        var first = x.Funding.Allocate(Officer, " A004 ", project.Id, "F01", 250_000m, day);
+        var second = x.Funding.Allocate(Officer, " a005 ", project.Id, "F01", 150_000m, day);
+        Check(first.Id == "A004" && second.Id == "a005" &&
+              project.Allocations.SequenceEqual(new[] { first, second }) && project.TotalFunding == 400_000m,
+            "Hai mã mới phải được chuẩn hóa và tổng kinh phí phải bằng 400000.");
+    }
+
+    private static void RejectDuplicateSource()
+    {
+        var x = Setup();
+        var original = x.Data.FindSource("F01");
+        var rejected = false;
+        try
+        {
+            x.Funding.SaveSource(Officer, " F01 ", "Tên thay thế", "Tài trợ ngoài");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Check(ex.Message == "Mã nguồn kinh phí đã tồn tại.", ex.Message);
+            rejected = true;
+        }
+
+        var stored = x.Data.FindSource("F01");
+        Check(x.Data.Sources.Count == 1 && ReferenceEquals(stored, original) && stored?.Name == "Quỹ trường",
+            $"Nguồn F01 trước: Quỹ trường; sau: {stored?.Name}; số nguồn: {x.Data.Sources.Count}.");
+        Check(rejected, "Nguồn kinh phí có mã trùng phải bị từ chối.");
+    }
+
+
+    private static void UpdateDepartmentWithPaddedId()
+    {
+        var x = Setup();
+        var original = x.Data.FindDepartment("D01")!;
+        var createdAt = original.CreatedAt;
+
+        var updated = x.People.SaveDepartment(Officer, " d01 ", "Tên mới", createdAt.AddYears(1));
+
+        Check(ReferenceEquals(original, updated) && ReferenceEquals(updated, x.Data.FindDepartment("D01")) &&
+              updated.Name == "Tên mới" && updated.CreatedAt == createdAt && x.Data.Departments.Count == 1,
+            $"D01 trước: {createdAt:yyyy-MM-dd}; sau: {updated.CreatedAt:yyyy-MM-dd}; cùng hồ sơ: {ReferenceEquals(original, updated)}.");
+    }
+
+    private static void UpdateResearcherWithPaddedId()
+    {
+        var x = Setup();
+        var original = x.Data.FindResearcher("R001")!;
+
+        var updated = x.People.SaveResearcher(Officer, " r001 ", "D01", "Tên mới", "moi@university.edu.vn",
+            academicTitle: "Tiến sĩ", phone: "0123", organization: "Khoa CNTT", isInstructor: true);
+
+        Check(ReferenceEquals(original, updated) && ReferenceEquals(updated, x.Data.FindResearcher("R001")) &&
+              updated.Id == "R001" && updated.FullName == "Tên mới" && updated.IsInstructor &&
+              updated.AcademicTitle == "Tiến sĩ" && updated.Phone == "0123" &&
+              updated.Organization == "Khoa CNTT" && x.Data.Researchers.Count == 2,
+            $"R001 trước: {original.Id}; sau: {updated.Id}; cùng hồ sơ: {ReferenceEquals(original, updated)}.");
+
+        var sameEmail = x.People.SaveResearcher(Officer, " r001 ", "D01", "Tên khác", updated.Email,
+            updated.AcademicTitle, updated.Phone, updated.Organization, updated.IsInstructor);
+        Check(ReferenceEquals(updated, sameEmail) && sameEmail.FullName == "Tên khác",
+            "Email của chính hồ sơ phải được chấp nhận.");
+    }
+
+    private static void RejectFundingOverflow()
+    {
+        foreach (var secondProjectId in new[] { "P001", "P002" })
+        {
+            var x = Setup();
+            var first = NewProject(x.Projects, "P001");
+            var second = NewProject(x.Projects, "P002");
+            var day = new DateOnly(2026, 11, 7);
+
+            // decimal.MaxValue vẫn là số tiền hợp lệ khi chưa có khoản cấp nào.
+            var original = x.Funding.Allocate(Officer, "A001", "P001", "F01", decimal.MaxValue, day);
+            var rejected = false;
+            try
+            {
+                x.Funding.Allocate(Officer, "A002", secondProjectId, "F01", 1m, day);
+            }
+            catch (InvalidOperationException)
+            {
+                rejected = true;
+            }
+
+            Check(first.Allocations.Count == 1 && second.Allocations.Count == 0 &&
+                  ReferenceEquals(first.Allocations[0], original) && first.TotalFunding == decimal.MaxValue &&
+                  second.TotalFunding == 0m,
+                $"Sau yêu cầu tới {secondProjectId}: số khoản P001/P002 là {first.Allocations.Count}/{second.Allocations.Count}, trước đó là 1/0.");
+            Check(rejected, "Khoản cấp làm tổng không biểu diễn được phải bị từ chối.");
+        }
+    }
+
+
+    private static void RejectMismatchedState()
+    {
+        var x = Setup();
+        var project = NewProject(x.Projects);
+        x.Projects.AssignMember(Officer, project.Id, "R001", ProjectRole.Leader);
+        var at = DateTimeOffset.Now;
+
+        var rejected = false;
+        try { new ActiveState().Complete(project, "OFFICER", at); }
+        catch (InvalidOperationException) { rejected = true; }
+        Check(rejected && project.Status == ProjectStatus.Pending && project.History.Count == 0,
+            $"Gọi ActiveState trên Pending cho trạng thái {project.Status}, lịch sử có {project.History.Count} bản ghi.");
+
+        x.Projects.Approve(Officer, project.Id);
+        var approval = project.History[0];
+        MustThrow<InvalidOperationException>(() => new PendingState().Approve(project, "OFFICER", at));
+        Check(project.Status == ProjectStatus.Active && project.History.Count == 1 && project.History[0] == approval,
+            "Duyệt trực tiếp qua PendingState không được thay lịch sử của đề tài đã duyệt.");
+    }
+
 }
