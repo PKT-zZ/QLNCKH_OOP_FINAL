@@ -13,6 +13,9 @@ public sealed class ConsoleMenu
     private readonly PeopleService _people;
     private readonly ProjectService _projects;
     private readonly FundingService _funding;
+    private readonly EvaluationService _evaluation;
+    private readonly OutputService _outputs;
+    private readonly ProjectLookupService _lookup;
     private readonly ReportService _reports = new();
     private CurrentUserContext _user = new(UserRole.Officer);
 
@@ -21,6 +24,9 @@ public sealed class ConsoleMenu
         _people  = new PeopleService(_data);
         _projects = new ProjectService(_data, _data);
         _funding = new FundingService(_data);
+        _evaluation = new EvaluationService(_data, _data, _data);
+        _outputs = new OutputService(_data, _data, _data);
+        _lookup = new ProjectLookupService(_data, _data);
     }
 
     //Vòng lặp menu; bắt lỗi dự kiến để người dùng sửa dữ liệu nhập và thử lại
@@ -28,7 +34,7 @@ public sealed class ConsoleMenu
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         Console.WriteLine("╔══════════════════════════════════════════════════════╗");
-        Console.WriteLine("║   HỆ THỐNG QUẢN LÝ NGHIÊN CỨU KHOA HỌC — PHẦN A   ║");
+        Console.WriteLine("║        HỆ THỐNG QUẢN LÝ NGHIÊN CỨU KHOA HỌC          ║");
         Console.WriteLine("╚══════════════════════════════════════════════════════╝");
         Console.WriteLine("Dữ liệu được lưu vào data/nckh.json sau mỗi thao tác thành công.");
         while (true)
@@ -73,9 +79,15 @@ public sealed class ConsoleMenu
         Console.WriteLine("   7  Phê duyệt đề tài");
         Console.WriteLine("  [Kinh phí]");
         Console.WriteLine("   8  Thêm nguồn kinh phí          9  Phân bổ kinh phí");
-        Console.WriteLine("  [Báo cáo]");
+        Console.WriteLine("  [Nghiệm thu & Đầu ra]");
+        Console.WriteLine("  13  Lập hội đồng nghiệm thu     14  Gán thành viên hội đồng");
+        Console.WriteLine("  15  Ghi điểm nghiệm thu         16  Hoàn thành đề tài");
+        Console.WriteLine("  17  Ghi bài báo                 18  Ghi sản phẩm bàn giao");
+        Console.WriteLine("  [Báo cáo & Tra cứu]");
         Console.WriteLine("  11  Báo cáo kinh phí theo đề tài");
         Console.WriteLine("  12  Báo cáo kinh phí theo nguồn tài trợ");
+        Console.WriteLine("  19  Báo cáo đầu ra theo đề tài  20  Báo cáo đầu ra theo loại");
+        Console.WriteLine("  21  Tra cứu đề tài (mã/trạng thái)");
         Console.WriteLine("─────────────────────────────────────────────────────");
         Console.WriteLine("   0  Thoát");
         Console.Write("Chọn: ");
@@ -212,6 +224,93 @@ public sealed class ConsoleMenu
                 PrintReport(new FundingBySourceStrategy(_data));
                 break;
 
+            // UC05: Lập hội đồng nghiệm thu
+            case "13":
+                var councilId = Read("Mã hội đồng: ");
+                var council = _evaluation.CreateCouncil(_user, councilId, Read("Mã đề tài: "),
+                    ReadDate("Ngày nghiệm thu (yyyy-MM-dd): "));
+                Console.WriteLine($"Đã lập hội đồng [{council.Id}] cho đề tài [{council.ProjectId}].");
+                break;
+
+            // UC05: Gán thành viên hội đồng
+            case "14":
+                _evaluation.AssignMember(_user, Read("Mã hội đồng: "), Read("Mã nhà nghiên cứu: "),
+                    Read("Vai trò: 1 = Chủ tịch, 2 = Ủy viên: ") switch
+                    {
+                        "1" => CouncilRole.Chairman,
+                        "2" => CouncilRole.Member,
+                        _   => throw new ArgumentException("Vai trò trong hội đồng không hợp lệ.")
+                    });
+                Console.WriteLine("Đã gán thành viên vào hội đồng.");
+                break;
+
+            // UC06: Chủ tịch ghi điểm
+            case "15":
+                _evaluation.RecordScore(_user, Read("Mã hội đồng: "), ReadScore("Điểm nghiệm thu (0-10): "));
+                Console.WriteLine("Đã ghi điểm nghiệm thu.");
+                break;
+
+            // UC06: Chuyên viên hoàn thành đề tài, bằng chứng do phân hệ B cung cấp
+            case "16":
+                var completeId = Read("Mã đề tài cần hoàn thành: ");
+                _projects.Complete(_user, completeId, new ResultCompletionEvidence(_data));
+                Console.WriteLine($"Đề tài [{completeId}] đã hoàn thành.");
+                break;
+
+            // UC07: Ghi bài báo (PaperCreator)
+            case "17":
+                var paperId = Read("Mã bài báo: ");
+                var paperTitle = Read("Tên bài báo: ");
+                var paperProject = Read("Mã đề tài liên kết: ");
+                var doi = Read("DOI (Enter để bỏ qua): ");
+                var publisher = Read("Nhà xuất bản/tạp chí: ");
+                var year = ReadInt("Năm xuất bản: ");
+                var authorCount = ReadInt("Số tác giả: ");
+                var authors = new List<AuthorDraft>();
+                for (var i = 1; i <= authorCount; i++)
+                    authors.Add(new AuthorDraft(Read($"  Tác giả {i} - mã nhà nghiên cứu: "),
+                        ReadInt($"  Tác giả {i} - thứ tự: "),
+                        Read($"  Tác giả {i} - là tác giả liên hệ? (y/n): ").Equals("y", StringComparison.OrdinalIgnoreCase)));
+                var paper = _outputs.AddPaper(_user, new PaperDraft(paperId, paperTitle, paperProject,
+                    doi.Length == 0 ? null : doi, publisher, year, authors));
+                Console.WriteLine($"Đã ghi {paper.GetDisplaySummary()}.");
+                break;
+
+            // UC07: Ghi sản phẩm bàn giao (DeliverableCreator)
+            case "18":
+                var deliverable = _outputs.AddDeliverable(_user, new DeliverableDraft(
+                    Read("Mã sản phẩm: "), Read("Tên sản phẩm: "), Read("Mã đề tài: "),
+                    Read("Mã loại (DT01 = Phần mềm, DT02 = Báo cáo kỹ thuật): "), ReadInt("Số lượng: ")));
+                Console.WriteLine($"Đã ghi {deliverable.GetDisplaySummary()}.");
+                break;
+
+            // UC08: Báo cáo đầu ra (Strategy Pattern)
+            case "19":
+                PrintReport(new OutputByProjectStrategy(_data, _data));
+                break;
+
+            case "20":
+                PrintReport(new OutputByTypeStrategy(_data));
+                break;
+
+            // UC08: Tra cứu đề tài theo mã hoặc trạng thái
+            case "21":
+                var lookupId = Read("Mã đề tài (Enter = tất cả): ");
+                var lookupStatus = Read("Trạng thái Pending/Active/Completed (Enter = tất cả): ");
+                ProjectStatus? statusFilter = lookupStatus.Length == 0 ? null
+                    : Enum.TryParse<ProjectStatus>(lookupStatus, true, out var parsed) && Enum.IsDefined(parsed) ? parsed
+                    : throw new ArgumentException("Trạng thái không hợp lệ.");
+                var found = _lookup.Search(_user, lookupId, statusFilter);
+                if (found.Count == 0) { Console.WriteLine("Không có đề tài phù hợp."); break; }
+                foreach (var item in found)
+                {
+                    Console.WriteLine($"\n[{item.Id}] {item.Title} | {item.Status} | kinh phí {item.TotalFunding:N0} đ | " +
+                                      $"điểm hội đồng: {(item.CouncilScore is null ? "chưa có" : item.CouncilScore.Value.ToString("0.##", CultureInfo.InvariantCulture))}");
+                    if (item.Outputs.Count == 0) Console.WriteLine("    (chưa có đầu ra)");
+                    foreach (var output in item.Outputs) Console.WriteLine($"    - {output}");
+                }
+                break;
+
             default:
                 Console.WriteLine("Lựa chọn không hợp lệ. Vui lòng chọn lại.");
                 break;
@@ -230,7 +329,10 @@ public sealed class ConsoleMenu
         foreach (var row in rows)
             Console.WriteLine($"  {row.Key,-8} {Truncate(row.Label, 38),-38} {row.Value,14:N0} {row.Unit}  {row.Detail}");
         Console.WriteLine("  " + new string('─', 72));
-        Console.WriteLine($"  {"TỔNG CỘNG",-47} {rows.Sum(r => r.Value),14:N0} đ");
+        // Chỉ cộng tổng khi mọi dòng cùng đơn vị (đ, đầu ra...); báo cáo theo loại có đơn vị khác nhau thì bỏ dòng tổng.
+        var units = rows.Select(r => r.Unit).Distinct().ToList();
+        if (units.Count == 1)
+            Console.WriteLine($"  {"TỔNG CỘNG",-47} {rows.Sum(r => r.Value),14:N0} {units[0]}");
     }
 
     private static string Read(string prompt)
@@ -251,6 +353,13 @@ public sealed class ConsoleMenu
             Console.WriteLine("[Lỗi] Số tiền phải là số dương hợp lệ trong phạm vi kiểu decimal. Vui lòng nhập lại.");
         }
     }
+
+    private static int ReadInt(string prompt) =>
+        int.Parse(Read(prompt), NumberStyles.Integer, CultureInfo.InvariantCulture);
+
+    //chap nhan ca dau cham va dau phay thap phan (8.5 hoac 8,5); khoang [0,10] do EvaluationCouncil kiem
+    private static decimal ReadScore(string prompt) =>
+        decimal.Parse(Read(prompt).Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture);
 
     private static DateOnly ReadDate(string prompt) =>
         DateOnly.ParseExact(Read(prompt), "yyyy-MM-dd", CultureInfo.InvariantCulture);
