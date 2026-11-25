@@ -20,6 +20,10 @@ public sealed class FundingService(IProjectRepository projects)
     {
         Access.Require(user, UserRole.Officer);
         var project = projects.FindProject(projectId) ?? throw new InvalidOperationException("Đề tài không tồn tại.");
+        // Sau khi nghiệm thu, giữ nguyên các khoản đã cấp cho đề tài.
+        if (project.Status == ProjectStatus.Completed)
+            throw new InvalidOperationException("Không thể phân bổ thêm kinh phí cho đề tài đã hoàn thành.");
+
         var source = projects.FindSource(sourceId) ?? throw new InvalidOperationException("Nguồn kinh phí không tồn tại.");
         // Mã đợt cấp phải duy nhất trên toàn bộ đề tài.
         var normalizedId = Guard.Required(id, nameof(id));

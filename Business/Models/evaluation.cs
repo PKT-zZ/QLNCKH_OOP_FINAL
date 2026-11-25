@@ -41,6 +41,9 @@ public sealed class EvaluationCouncil
     //R6: moi hoi dong 1 Chairman, 1 nguoi khong duoc lap
     public void AddMember(string researcherId, CouncilRole role)
     {
+        // Điểm 0 cũng là một lần chấm và khóa danh sách hội đồng.
+        if (Score.HasValue)
+            throw new InvalidOperationException("Danh sách hội đồng đã khóa sau khi ghi điểm nghiệm thu.");
         researcherId = Guard.Required(researcherId, nameof(researcherId));
         if (!Enum.IsDefined(role)) throw new ArgumentOutOfRangeException(nameof(role), "Vai trò trong hội đồng không hợp lệ.");
         if (_members.Any(m => m.ResearcherId.Equals(researcherId, StringComparison.OrdinalIgnoreCase)))

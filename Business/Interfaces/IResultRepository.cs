@@ -17,6 +17,8 @@ public interface IResultRepository
     DeliverableType? FindDeliverableType(string id);
     void Save(EvaluationCouncil council);
     void Save(Paper paper);
+    // Ghi bài báo mới và liên kết đề tài trong cùng một thao tác.
+    void SavePaperWithLink(Paper paper, string projectId);
     void Save(ProjectDeliverable deliverable);
     void Save(ProjectPaperLink link);
 }

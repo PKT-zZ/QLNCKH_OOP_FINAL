@@ -51,6 +51,22 @@ public class InMemoryResearchRepository : IPeopleRepository, IProjectRepository,
     public DeliverableType? FindDeliverableType(string id) => _deliverableTypes.GetValueOrDefault(id);
     public virtual void Save(EvaluationCouncil value) => _councils[value.Id] = value;
     public virtual void Save(Paper value) => _papers[value.Id] = value;
+    public virtual void SavePaperWithLink(Paper paper, string projectId)
+    {
+        var project = FindProject(projectId) ?? throw new InvalidOperationException("Đề tài không tồn tại.");
+        var link = new ProjectPaperLink(project.Id, paper.Id);
+        if (!_papers.TryAdd(paper.Id, paper))
+            throw new InvalidOperationException("Mã bài báo đã tồn tại.");
+        _paperLinks.Add(link);
+    }
+
+    // Hoàn tác cặp vừa thêm nếu kho JSON không ghi được xuống đĩa.
+    protected void UndoNewPaper(string paperId)
+    {
+        _papers.Remove(paperId);
+        _paperLinks.RemoveAll(link => link.PaperId.Equals(paperId, StringComparison.OrdinalIgnoreCase));
+    }
+
     public virtual void Save(ProjectDeliverable value) => _deliverables[value.Id] = value;
     public virtual void Save(ProjectPaperLink value)
     {

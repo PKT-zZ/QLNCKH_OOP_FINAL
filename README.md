@@ -15,7 +15,7 @@ Phạm vi thiết kế của nhóm gồm tám ca sử dụng. Luồng đầy đ�
 | `Presentation/` | Menu, nhập liệu và hiển thị lỗi. |
 | `Business/` | Thực thể, quy tắc nghiệp vụ, kiểm tra vai trò và hợp đồng lưu trữ. |
 | `Data/` | Kho dữ liệu trong bộ nhớ, kho JSON và dữ liệu mẫu. |
-| `QLNCKH_OOP_FINAL.Tests/` | Bộ kiểm thử nghiệp vụ bằng kho dữ liệu trong bộ nhớ. |
+| `QLNCKH_OOP_FINAL.Tests/` | Kiểm thử nghiệp vụ trong bộ nhớ và kiểm thử mở tệp qua ứng dụng thật. |
 
 `ResearchProject` dùng State để xử lý chuyển trạng thái. Báo cáo kinh phí dùng hai cài đặt của `IReportStrategy`, theo đề tài và theo nguồn. `ICompletionEvidence` là hợp đồng để phân hệ nghiệm thu cung cấp điều kiện hoàn thành đề tài, do `ResultCompletionEvidence` (phân hệ B) cài đặt trên dữ liệu thật. UC07 dùng Factory Method (`ResearchOutputCreator`, `PaperCreator`, `DeliverableCreator`) để tạo `Paper` hoặc `ProjectDeliverable`, cùng kế thừa `ResearchOutput`. Báo cáo đầu ra dùng thêm `OutputByProjectStrategy` và `OutputByTypeStrategy`.
 
@@ -38,7 +38,7 @@ Lệnh sau tạo bản chạy cho Windows x64. Máy chạy cần có .NET 8 Runt
 dotnet publish .\QLNCKH_OOP_FINAL.csproj -c Release -r win-x64 --self-contained false -o .\dist
 ```
 
-Sao chép cả thư mục `dist` để giữ tệp thực thi, các tệp .NET, cấu hình và seed. Mở `QLNCKH_OOP_FINAL.exe` trong bản sao có quyền ghi.
+Bản nộp dùng `Data/seed.json` của bản tích hợp A–B. Sao chép cả thư mục `dist` sang một thư mục mới có quyền ghi, giữ các tệp thực thi, tệp .NET, `config/appsettings.json` và `Data/seed.json`. Khi đóng gói, chỉ kèm dữ liệu mẫu và để ứng dụng tự tạo `data/nckh.json` khi giảng viên mở `QLNCKH_OOP_FINAL.exe` lần đầu. Giữ tệp dữ liệu làm việc hiện có ở thư mục cũ.
 
 ## 4. Kiểm thử
 
@@ -46,9 +46,9 @@ Sao chép cả thư mục `dist` để giữ tệp thực thi, các tệp .NET, 
 dotnet run --project .\QLNCKH_OOP_FINAL.Tests\QLNCKH_OOP_FINAL.Tests.csproj
 ```
 
-Bộ kiểm thử có 26 ca phần A và 21 ca phần B (B-T11 đến B-T20 cùng các ca kiểm quyền, Factory Method, Strategy, tra cứu). Mỗi ca dùng kho trong bộ nhớ. Chương trình in kết quả từng ca và trả mã thoát khác 0 nếu có ca thất bại. Ca hoàn thành đề tài dùng nguồn bằng chứng giả lập để kiểm tra `ICompletionEvidence`.
+Bộ kiểm thử gồm 27 ca của A và 24 ca của B dùng kho trong bộ nhớ. Thêm 12 ca mở ứng dụng thật trong thư mục tạm để kiểm tra việc nạp JSON. Chương trình in kết quả từng ca và trả mã thoát khác 0 nếu có ca thất bại. A-BRIDGE dùng bằng chứng giả lập, còn B-T20 kiểm tra nghiệm thu với dữ liệu hội đồng và đầu ra trong kho bộ nhớ.
 
-## 5. Kịch bản trình diễn UC01–UC04
+## 5. Kịch bản trình diễn hai phân hệ
 
 Dùng một bản chạy mới để ứng dụng khởi tạo từ seed. Nếu chạy lại trên cùng dữ liệu, chọn mã đề tài, nguồn và phân bổ chưa được sử dụng. Nhập ngày theo dạng `yyyy-MM-dd`.
 
@@ -58,7 +58,13 @@ Dùng một bản chạy mới để ứng dụng khởi tạo từ seed. Nếu 
 4. Chọn **8**, thêm nguồn `F03` với tên *Quỹ hỗ trợ nghiên cứu* và loại *Tài trợ ngoài*. Dùng mục **9** hai lần để cấp kinh phí cho `P003`.
    - Đợt `A004` từ `F01`, số tiền `100000000`, ngày `2026-02-01`.
    - Đợt `A005` từ `F03`, số tiền `150000000`, ngày `2026-06-01`.
-5. Chọn **11** để xem tổng kinh phí của `P003` là 250.000.000 đồng và chọn **12** để xem tổng theo nguồn. Thoát bằng **0**, mở lại ứng dụng rồi chọn **1** để đối chiếu trạng thái và tổng kinh phí đã lưu.
+5. Chọn **11** để xem tổng kinh phí của `P003` là 250.000.000 đồng và chọn **12** để xem tổng theo nguồn. Thoát bằng **0**, mở lại ứng dụng rồi chọn **1** để đối chiếu trạng thái và **11** để kiểm tra lại tổng kinh phí đã lưu.
+
+6. Trên cùng đề tài P003 đang `Active`, dùng menu **13** lập hội đồng `HD03`, ngày `2026-11-20`. Dùng **14** gán `R002` làm Chủ tịch. Chuyển sang vai trò Chủ tịch `R002` rồi dùng **15** ghi điểm `8,5`.
+7. Chuyển sang Nhà nghiên cứu `R001`. Dùng **18** ghi sản phẩm `SP03`, tên *Bộ dữ liệu thử*, đề tài `P003`, loại `DT02`, số lượng `2`. Chuyển về Chuyên viên, dùng **16** xác nhận hoàn thành. Thoát bằng **0**.
+8. Mở lại, dùng **21** lọc `P003` và `Completed`. Đối chiếu 8,5 điểm, 250.000.000 đồng và sản phẩm SP03. Menu **19** đếm một bản ghi đầu ra cho P003, còn **20** cho thấy hai sản phẩm DT02.
+
+Chỉ mở một phiên khi ghi vào cùng tệp dữ liệu. Nếu ứng dụng báo tệp lỗi, giữ bản gốc để kiểm tra và khôi phục từ bản sao lưu. Để chạy demo từ đầu, mở ứng dụng trong thư mục mới có cấu hình và seed tích hợp. Khi khởi động, kho kiểm tra sáu danh sách lõi, quan hệ tham chiếu, bằng chứng của đề tài đã hoàn thành và giới hạn tổng kinh phí.
 
 ## 6. Phân công
 
@@ -69,4 +75,4 @@ Dùng một bản chạy mới để ứng dụng khởi tạo từ seed. Nếu 
 
 - Thành viên A dùng các công cụ AI để thảo luận sâu hơn về thiết kế, giải thích những điểm còn vướng và rà lại sơ đồ UML cho khớp với mã nguồn.
 - AI hỗ trợ viết một số đoạn mã có thể tự động hóa, như xử lý dữ liệu, nhập liệu và chuẩn bị ca kiểm thử.
-- Thành viên A tự viết các lớp, phương thức nghiệp vụ chính và phần cài đặt hướng đối tượng cốt lõi. Với các phần này, AI chủ yếu hỗ trợ đọc lại mã, nhận xét thiết kế và gợi ý cách sửa khi phát hiện vấn đề.
+- Thành viên A tự viết các lớp, phương thức nghiệp vụ chính và phần cài đặt hướng đối tượng cốt lõi. Với các phần này, AI hỗ trợ rà soát, đề xuất và chỉnh sửa một số chỗ khi tích hợp, trong đó có điều kiện khóa danh sách hội đồng, cách tính tổng sản phẩm và kiểm tra dữ liệu khi nạp JSON.
