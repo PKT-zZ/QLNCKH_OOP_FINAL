@@ -272,7 +272,7 @@ public sealed class ConsoleMenu
                 for (var i = 1; i <= authorCount; i++)
                     authors.Add(new AuthorDraft(Read($"  Tác giả {i} - mã nhà nghiên cứu: "),
                         ReadInt($"  Tác giả {i} - thứ tự: "),
-                        Read($"  Tác giả {i} - là tác giả liên hệ? (y/n): ").Equals("y", StringComparison.OrdinalIgnoreCase)));
+                        ReadYesNo($"  Tác giả {i} - là tác giả liên hệ? (y/n): ")));
                 var paper = _outputs.AddPaper(_user, new PaperDraft(paperId, paperTitle, paperProject,
                     doi.Length == 0 ? null : doi, publisher, year, authors));
                 Console.WriteLine($"Đã ghi {paper.GetDisplaySummary()}.");
@@ -341,6 +341,21 @@ public sealed class ConsoleMenu
     {
         Console.Write(prompt);
         return Console.ReadLine()?.Trim() ?? throw new InvalidOperationException("Không có dữ liệu nhập.");
+    }
+
+    // Hỏi lại cùng trường nếu người dùng gõ nhầm hoặc bỏ trống câu trả lời.
+    private static bool ReadYesNo(string prompt)
+    {
+        while (true)
+        {
+            var answer = Read(prompt);
+            if (answer.Equals("y", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (answer.Equals("n", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            Console.WriteLine("[Lỗi] Hãy nhập y hoặc n.");
+        }
     }
 
     private static decimal ReadFundingAmount(string prompt)

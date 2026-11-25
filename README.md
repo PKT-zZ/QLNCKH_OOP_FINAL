@@ -46,11 +46,11 @@ Bản nộp dùng `Data/seed.json` của bản tích hợp A–B. Sao chép cả
 dotnet run --project .\QLNCKH_OOP_FINAL.Tests\QLNCKH_OOP_FINAL.Tests.csproj
 ```
 
-Bộ kiểm thử gồm 27 ca của A và 24 ca của B dùng kho trong bộ nhớ. Thêm 12 ca mở ứng dụng thật trong thư mục tạm để kiểm tra việc nạp JSON. Chương trình in kết quả từng ca và trả mã thoát khác 0 nếu có ca thất bại. A-BRIDGE dùng bằng chứng giả lập, còn B-T20 kiểm tra nghiệm thu với dữ liệu hội đồng và đầu ra trong kho bộ nhớ.
+Bộ kiểm thử gồm 27 ca của A và 24 ca của B dùng kho trong bộ nhớ. Thêm 13 ca mở ứng dụng thật trong thư mục tạm để kiểm tra việc nạp JSON. Chương trình in kết quả từng ca và trả mã thoát khác 0 nếu có ca thất bại. A-BRIDGE dùng bằng chứng giả lập, còn B-T20 kiểm tra nghiệm thu với dữ liệu hội đồng và đầu ra trong kho bộ nhớ.
 
 ## 5. Kịch bản trình diễn hai phân hệ
 
-Dùng một bản chạy mới để ứng dụng khởi tạo từ seed. Nếu chạy lại trên cùng dữ liệu, chọn mã đề tài, nguồn và phân bổ chưa được sử dụng. Nhập ngày theo dạng `yyyy-MM-dd`.
+Dùng một bản chạy mới để ứng dụng khởi tạo từ seed. Nếu chạy lại trên cùng dữ liệu, chọn mã đề tài, nguồn, đợt cấp, hội đồng, bài báo và sản phẩm chưa được sử dụng. Nhập ngày theo dạng `yyyy-MM-dd`.
 
 1. Ở vai trò Chuyên viên, chọn **10** và nhập `D01` để xem lịch sử lãnh đạo đơn vị.
 2. Chọn **2**, rồi chọn **2** và nhập `R001` để vào vai Nhà nghiên cứu. Chọn **5**, tạo đề tài `P003` loại `C01`, tên *Nghiên cứu phân loại văn bản*, bắt đầu `2026-01-01` và kết thúc `2026-12-31`. Đề tài mới ở trạng thái `Pending`.
@@ -61,10 +61,11 @@ Dùng một bản chạy mới để ứng dụng khởi tạo từ seed. Nếu 
 5. Chọn **11** để xem tổng kinh phí của `P003` là 250.000.000 đồng và chọn **12** để xem tổng theo nguồn. Thoát bằng **0**, mở lại ứng dụng rồi chọn **1** để đối chiếu trạng thái và **11** để kiểm tra lại tổng kinh phí đã lưu.
 
 6. Trên cùng đề tài P003 đang `Active`, dùng menu **13** lập hội đồng `HD03`, ngày `2026-11-20`. Dùng **14** gán `R002` làm Chủ tịch. Chuyển sang vai trò Chủ tịch `R002` rồi dùng **15** ghi điểm `8,5`.
-7. Chuyển sang Nhà nghiên cứu `R001`. Dùng **18** ghi sản phẩm `SP03`, tên *Bộ dữ liệu thử*, đề tài `P003`, loại `DT02`, số lượng `2`. Chuyển về Chuyên viên, dùng **16** xác nhận hoàn thành. Thoát bằng **0**.
-8. Mở lại, dùng **21** lọc `P003` và `Completed`. Đối chiếu 8,5 điểm, 250.000.000 đồng và sản phẩm SP03. Menu **19** đếm một bản ghi đầu ra cho P003, còn **20** cho thấy hai sản phẩm DT02.
+7. Chuyển sang Nhà nghiên cứu `R001`. Dùng **17** ghi bài báo `PA03`, tên *Kết quả thử nghiệm phân loại văn bản*, đề tài `P003`, để trống DOI, nhập tạp chí *Tạp chí Khoa học* và năm `2026`. Nhập một tác giả `R001`, thứ tự `1`, rồi nhập `y` để xác nhận tác giả liên hệ. Câu hỏi chỉ nhận `y` hoặc `n`.
+8. Dùng **18** ghi sản phẩm `SP03`, tên *Bộ dữ liệu thử*, đề tài `P003`, loại `DT02`, số lượng `2`. Chuyển về Chuyên viên, dùng **16** xác nhận hoàn thành. Thoát bằng **0**.
+9. Mở lại, dùng **21** lọc `P003` và `Completed`. Đối chiếu 8,5 điểm, 250.000.000 đồng, bài báo PA03 và sản phẩm SP03. Menu **19** đếm hai bản ghi đầu ra cho P003. Menu **20** tổng hợp trên toàn hệ thống, trong đó SP03 đóng góp hai đơn vị cho loại DT02.
 
-Chỉ mở một phiên khi ghi vào cùng tệp dữ liệu. Nếu ứng dụng báo tệp lỗi, giữ bản gốc để kiểm tra và khôi phục từ bản sao lưu. Để chạy demo từ đầu, mở ứng dụng trong thư mục mới có cấu hình và seed tích hợp. Khi khởi động, kho kiểm tra sáu danh sách lõi, quan hệ tham chiếu, bằng chứng của đề tài đã hoàn thành và giới hạn tổng kinh phí.
+Chỉ mở một phiên khi ghi vào cùng tệp dữ liệu. Khi khởi động, kho kiểm tra sáu danh sách lõi, quan hệ tham chiếu, bằng chứng của đề tài đã hoàn thành và giới hạn tổng kinh phí. Nếu một bài báo thiếu liên kết với đề tài, ứng dụng báo mã bài và dừng trước khi vào menu. Hãy giữ tệp lỗi để đối chiếu và khôi phục bản sao lưu hợp lệ. Để chạy demo từ đầu, mở ứng dụng trong thư mục mới có cấu hình và seed tích hợp.
 
 ## 6. Phân công
 

@@ -79,16 +79,18 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 #### UC07: Ghi nhận kết quả đầu ra nghiên cứu
 - **Tác nhân:** Nhà nghiên cứu.
 - **Mô tả:** Nhà nghiên cứu ghi nhận bài báo khoa học (kèm danh sách tác giả, DOI, nhà xuất bản) hoặc sản phẩm bàn giao thực tế, liên kết với đề tài.
-- **Điều kiện hợp lệ:** Người ghi nhận phải có hồ sơ và tham gia đề tài đang `Active`. Với bài báo, người ghi phải có tên trong danh sách tác giả và mọi tác giả đều phải có hồ sơ. Bài báo có ít nhất một tác giả và đúng một tác giả liên hệ. Thứ tự tác giả không trùng. DOI phải duy nhất nếu có. Sản phẩm có loại hợp lệ và số lượng lớn hơn 0.
+- **Điều kiện chung.** Người ghi nhận phải có hồ sơ và tham gia đề tài đang `Active`.
+- **Bài báo.** Người ghi phải có tên trong danh sách tác giả. Mỗi tác giả phải có hồ sơ, chỉ xuất hiện một lần và có số thứ tự nguyên dương, không trùng. Bài báo cần ít nhất một tác giả, trong đó có đúng một tác giả liên hệ. Năm xuất bản nằm trong khoảng 1900–2100. DOI phải duy nhất nếu có.
+- **Nhập tác giả liên hệ ở menu 17.** Nhập `y` nếu là tác giả liên hệ hoặc `n` nếu không, chấp nhận cả chữ hoa. Nếu nhập giá trị khác, chương trình hỏi lại cùng câu hỏi.
+- **Sản phẩm bàn giao.** Loại sản phẩm phải tồn tại và số lượng phải là số nguyên dương.
 - **Hàm điều khiển:** `OutputService.AddPaper()`, `OutputService.AddDeliverable()`.
-- Bài báo mới và liên kết với đề tài được ghi cùng một lần vào JSON. Nếu ghi thất bại, phiên dừng và tệp chính giữ dữ liệu của lần lưu thành công gần nhất.
+- **Lưu và mở lại.** Bài báo mới và liên kết với đề tài được ghi cùng một lần vào JSON. Nếu ghi thất bại, phiên dừng và tệp chính giữ dữ liệu của lần lưu thành công gần nhất. Khi mở tệp, kho yêu cầu mỗi bài báo có ít nhất một liên kết đề tài hợp lệ. Nếu thiếu, ứng dụng báo mã bài và dừng trước khi vào menu.
 
 #### UC08: Báo cáo tổng hợp và tra cứu
 - **Tác nhân:** Chuyên viên.
 - **Danh sách và báo cáo.** Mọi vai trò có thể dùng menu 1 để xem mã, tên, trạng thái và số lượng thành viên của đề tài. Chuyên viên xem kinh phí theo đề tài ở menu 11 và theo nguồn ở menu 12.
-- **Menu 19–21.** Menu 19 đếm bản ghi đầu ra của từng đề tài. Menu 20 đếm bài báo và cộng số lượng sản phẩm theo loại. Menu 21 lọc theo mã, trạng thái hoặc cả hai bằng `ProjectLookupService.Search`.
-- **Dữ liệu ra:** Bảng báo cáo dạng dòng `ReportRow(Key, Label, Value, Unit, Detail)`. Có thể bỏ trống `Detail`.
-- **Hàm điều khiển:** `ReportService.Generate(CurrentUserContext user, IReportStrategy strategy)` kiểm quyền trước khi gọi `strategy.BuildRows()`.
+- **Báo cáo ở menu 11, 12, 19 và 20.** `ReportService.Generate` kiểm quyền rồi gọi `IReportStrategy.BuildRows` để tạo các dòng `ReportRow`. Menu 19 đếm bản ghi đầu ra của từng đề tài. Menu 20 đếm bài báo và cộng số lượng sản phẩm theo loại trên toàn hệ thống.
+- **Tra cứu ở menu 21.** `ProjectLookupService.Search` kiểm quyền rồi lọc theo mã, trạng thái hoặc cả hai. Mỗi `ProjectSummary` chứa mã, tên, trạng thái, tổng kinh phí, điểm hội đồng và danh sách đầu ra.
 
 ---
 

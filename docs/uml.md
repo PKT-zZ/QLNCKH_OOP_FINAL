@@ -8,7 +8,7 @@ Chương trình C# gồm ba tầng trong cùng project.
 
 - **Presentation.** `ConsoleMenu` nhận lựa chọn và dữ liệu nhập, giữ vai trò hiện tại, gọi service và hiển thị kết quả hoặc lỗi. Menu khởi tạo kho JSON để đưa vào các service.
 - **Business.** Chứa mô hình, service, các giao diện và `CurrentUserContext`. Xử lý quy tắc nghiệp vụ mà không đọc hoặc ghi console, tệp dữ liệu.
-- **Data.** `InMemoryResearchRepository` hiện thực ba giao diện kho. `JsonResearchRepository` kế thừa lớp này và ghi đè `Save` để ghi `data/nckh.json`. Bộ kiểm thử dùng kho trong bộ nhớ.
+- **Data.** `InMemoryResearchRepository` hiện thực ba giao diện kho. `JsonResearchRepository` kế thừa lớp này và ghi đè các thao tác lưu để ghi `data/nckh.json`. Các ca nghiệp vụ dùng kho trong bộ nhớ. Nhóm ca nạp JSON mở ứng dụng với tệp dữ liệu riêng trong thư mục tạm.
 
 ```mermaid
 graph TD
@@ -256,7 +256,7 @@ classDiagram
     Researcher "1" <-- "0..*" PaperAuthor : Là tác giả
 
     ResearchProject "1" <-- "0..*" ProjectPaperLink : Liên kết
-    Paper "1" <-- "0..*" ProjectPaperLink : Liên kết
+    Paper "1" <-- "1..*" ProjectPaperLink : Liên kết của bài đã lưu
 ```
 
 ---
@@ -355,6 +355,10 @@ classDiagram
 
     class ReportService {
         +Generate(CurrentUserContext user, IReportStrategy strategy) IReadOnlyList~ReportRow~
+    }
+
+    class ProjectLookupService {
+        +Search(CurrentUserContext user, string? projectId, ProjectStatus? status) IReadOnlyList~ProjectSummary~
     }
 
     ReportService ..> IReportStrategy : Gọi chiến lược nhận từ menu
@@ -533,6 +537,7 @@ classDiagram
     ResultCompletionEvidence ..> IResultRepository
     ProjectLookupService ..> IProjectRepository
     ProjectLookupService ..> IResultRepository
+    ProjectLookupService ..> ProjectSummary : Trả kết quả tra cứu
     InMemoryResearchRepository ..|> IResultRepository
     InMemoryResearchRepository ..|> IProjectRepository
     InMemoryResearchRepository <|-- JsonResearchRepository
@@ -662,7 +667,7 @@ sequenceDiagram
     participant Results as IResultRepository
 
     %% UC05: Lập hội đồng
-    CV->>UI: 1. Lập hội đồng nghiệm thu (Menu B)
+    CV->>UI: 1. Lập hội đồng nghiệm thu (menu 13)
     UI->>ES: CreateCouncil(user, councilId, projId, date)
     ES->>ES: Kiểm tra đề tài Active và chưa có hội đồng
     ES->>C: new EvaluationCouncil(councilId, projId, date)
@@ -674,16 +679,17 @@ sequenceDiagram
     ES->>Results: Save(council)
 
     %% UC06: Ghi điểm nghiệm thu
-    CT->>UI: 2. Nhập điểm đánh giá (Menu B)
+    CT->>UI: 2. Nhập điểm đánh giá (menu 15)
     UI->>ES: RecordScore(user, councilId, score)
     ES->>ES: Kiểm quyền CouncilChair và trạng thái Active
     ES->>C: RecordScore(user.ResearcherId, score)
     C->>C: Kiểm tra đúng Chủ tịch và khoảng điểm 0 đến 10
+    Note over C: Khóa danh sách thành viên từ điểm đầu tiên, kể cả điểm 0
     ES->>Results: Save(council)
     UI-->>CT: Đã lưu điểm nghiệm thu
 
     %% UC06: Hoàn thành đề tài
-    CV->>UI: 3. Đóng và hoàn thành đề tài (Menu B)
+    CV->>UI: 3. Xác nhận hoàn thành đề tài (menu 16)
     UI->>PS: Complete(user, projId, Evidence)
     PS->>PS: Kiểm quyền Officer
     PS->>Repo: FindProject(projId)
@@ -707,7 +713,7 @@ sequenceDiagram
 
 ### 5.4. UC07 — Ghi nhận đầu ra qua Factory Method
 
-Factory tạo đối tượng theo loại đầu ra. Service kiểm tra tham chiếu và các ràng buộc cần tra kho trước khi lưu.
+Factory tạo đối tượng theo loại đầu ra. Service kiểm tra tham chiếu và các ràng buộc cần tra kho trước khi lưu. Menu 17 tạo liên kết đầu tiên khi ghi bài báo. Khi mở JSON, kho kiểm tra để mỗi bài báo đã lưu có ít nhất một liên kết đề tài hợp lệ.
 
 ```mermaid
 sequenceDiagram
@@ -719,7 +725,8 @@ sequenceDiagram
     participant Repo as IResultRepository
 
     NNC->>UI: 1. Chọn loại đầu ra (Bài báo hoặc Sản phẩm)
-    alt Chọn tạo Bài báo
+    alt Chọn ghi bài báo (menu 17)
+        UI->>NNC: Hỏi y hoặc n cho từng tác giả liên hệ, hỏi lại nếu nhập sai
         UI->>OS: AddPaper(user, paperDraft)
         OS->>OS: Kiểm quyền và người dùng tham gia đề tài
         OS->>OS: Kiểm tra người ghi là tác giả và hồ sơ tác giả tồn tại
@@ -729,7 +736,7 @@ sequenceDiagram
         Factory->>Out: Validate() (danh sách tác giả)
         OS->>Repo: Kiểm tra mã và DOI nếu có
         OS->>Repo: SavePaperWithLink(paper, project.Id)
-    else Chọn tạo Sản phẩm bàn giao
+    else Chọn ghi sản phẩm bàn giao (menu 18)
         UI->>OS: AddDeliverable(user, deliverableDraft)
         OS->>OS: Kiểm quyền và người dùng tham gia đề tài
         OS->>Repo: Tra loại sản phẩm
