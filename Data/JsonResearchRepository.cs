@@ -51,6 +51,10 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
     public override void Save(Researcher value) { EnsureWritable(); base.Save(value); Persist(); }
     public override void Save(ResearchProject value) { EnsureWritable(); base.Save(value); Persist(); }
     public override void Save(FundingSource value) { EnsureWritable(); base.Save(value); Persist(); }
+    public override void Save(EvaluationCouncil value) { EnsureWritable(); base.Save(value); Persist(); }
+    public override void Save(Paper value) { EnsureWritable(); base.Save(value); Persist(); }
+    public override void Save(ProjectDeliverable value) { EnsureWritable(); base.Save(value); Persist(); }
+    public override void Save(ProjectPaperLink value) { EnsureWritable(); base.Save(value); Persist(); }
 
     private void EnsureWritable()
     {
@@ -96,6 +100,43 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
                 throw new InvalidDataException("Đề tài có thành viên hoặc nguồn kinh phí không tồn tại.");
             base.Save(project);
         }
+        LoadResults(snapshot);
+    }
+
+    //phan he B: nap sau de tai vi tham chieu de tai, nguoi, loai san pham
+    private void LoadResults(AppSnapshot snapshot)
+    {
+        foreach (var type in snapshot.DeliverableTypes) AddSeed(type);
+        foreach (var dto in snapshot.Councils)
+        {
+            if (FindProject(dto.ProjectId) is null)
+                throw new InvalidDataException("Hội đồng tham chiếu đề tài không tồn tại.");
+            var council = EvaluationCouncil.Restore(dto.Id, dto.ProjectId, dto.EvaluationDate, dto.Score, dto.Members);
+            if (council.Members.Any(m => FindResearcher(m.ResearcherId) is null))
+                throw new InvalidDataException("Hội đồng có thành viên không tồn tại.");
+            base.Save(council);
+        }
+        foreach (var dto in snapshot.Papers)
+        {
+            var paper = Paper.Restore(dto.Id, dto.Title, dto.Doi, dto.Publisher, dto.PublishedYear, dto.Authors);
+            if (paper.Authors.Any(a => FindResearcher(a.ResearcherId) is null))
+                throw new InvalidDataException("Bài báo có tác giả không tồn tại.");
+            base.Save(paper);
+        }
+        foreach (var link in snapshot.PaperLinks)
+        {
+            if (FindProject(link.ProjectId) is null || FindPaper(link.PaperId) is null)
+                throw new InvalidDataException("Liên kết đề tài–bài báo tham chiếu sai.");
+            base.Save(link);
+        }
+        foreach (var dto in snapshot.Deliverables)
+        {
+            if (FindProject(dto.ProjectId) is null || FindDeliverableType(dto.TypeId) is null)
+                throw new InvalidDataException("Sản phẩm tham chiếu đề tài hoặc loại không tồn tại.");
+            var deliverable = new ProjectDeliverable(dto.Id, dto.ProjectId, dto.TypeId, dto.Title, dto.Quantity);
+            deliverable.Validate();
+            base.Save(deliverable);
+        }
     }
 
     // Từ chối snapshot có mã/email trùng trước khi Load thay đổi bộ nhớ
@@ -132,6 +173,25 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
         // Mã phân bổ là duy nhất trong toàn hệ thống, không chỉ trong một đề tài
         RequireUnique(snapshot.Projects.SelectMany(p => p.Allocations.Select(a => a.Id)),
             "mã phân bổ kinh phí");
+
+        // Phân hệ B: danh sách thiếu trong file cũ được hiểu là rỗng; phần tử null bị từ chối
+        snapshot.DeliverableTypes ??= [];
+        snapshot.Councils ??= [];
+        snapshot.Papers ??= [];
+        snapshot.PaperLinks ??= [];
+        snapshot.Deliverables ??= [];
+        if (snapshot.DeliverableTypes.Any(x => x is null) || snapshot.Councils.Any(x => x is null || x.Members is null) ||
+            snapshot.Papers.Any(x => x is null || x.Authors is null) || snapshot.PaperLinks.Any(x => x is null) ||
+            snapshot.Deliverables.Any(x => x is null))
+            throw new InvalidDataException("Dữ liệu hội đồng, bài báo hoặc sản phẩm chứa bản ghi null.");
+        RequireUnique(snapshot.DeliverableTypes.Select(x => x.Id), "mã loại sản phẩm");
+        RequireUnique(snapshot.Councils.Select(x => x.Id), "mã hội đồng");
+        // R8: mỗi đề tài tối đa một hội đồng
+        RequireUnique(snapshot.Councils.Select(x => x.ProjectId), "đề tài có hội đồng nghiệm thu");
+        RequireUnique(snapshot.Papers.Select(x => x.Id), "mã bài báo");
+        // R9: DOI không trùng nếu có nhập
+        RequireUnique(snapshot.Papers.Where(x => !string.IsNullOrWhiteSpace(x.Doi)).Select(x => x.Doi), "DOI bài báo");
+        RequireUnique(snapshot.Deliverables.Select(x => x.Id), "mã sản phẩm bàn giao");
     }
 
     private static void RequireUnique(IEnumerable<string?> values, string label)
@@ -160,6 +220,11 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
                 Categories = Categories.ToList(),
                 Projects = Projects.Select(ProjectData.FromModel).ToList(),
                 Sources = Sources.ToList(),
+                DeliverableTypes = DeliverableTypes.ToList(),
+                Councils = Councils.Select(CouncilData.FromModel).ToList(),
+                Papers = Papers.Select(PaperData.FromModel).ToList(),
+                PaperLinks = PaperLinks.ToList(),
+                Deliverables = Deliverables.Select(DeliverableData.FromModel).ToList(),
                 OtherModules = _otherModules
             };
             File.WriteAllText(tempPath, JsonSerializer.Serialize(snapshot, JsonOptions));
@@ -188,6 +253,12 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
         public List<ProjectCategory> Categories { get; set; } = [];
         public List<ProjectData> Projects { get; set; } = [];
         public List<FundingSource> Sources { get; set; } = [];
+        //phan he B
+        public List<DeliverableType> DeliverableTypes { get; set; } = [];
+        public List<CouncilData> Councils { get; set; } = [];
+        public List<PaperData> Papers { get; set; } = [];
+        public List<ProjectPaperLink> PaperLinks { get; set; } = [];
+        public List<DeliverableData> Deliverables { get; set; } = [];
         [JsonExtensionData] public Dictionary<string, JsonElement>? OtherModules { get; set; }
     }
 
@@ -215,6 +286,65 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
             Members = project.Members.ToList(),
             Allocations = project.Allocations.ToList(),
             History = project.History.ToList()
+        };
+    }
+
+    //DTO hoi dong: tach du lieu luu tru khoi logic R6/R7
+    public sealed class CouncilData
+    {
+        public string Id { get; set; } = "";
+        public string ProjectId { get; set; } = "";
+        public DateOnly EvaluationDate { get; set; }
+        public decimal? Score { get; set; }
+        public List<CouncilMembership> Members { get; set; } = [];
+
+        public static CouncilData FromModel(EvaluationCouncil council) => new()
+        {
+            Id = council.Id,
+            ProjectId = council.ProjectId,
+            EvaluationDate = council.EvaluationDate,
+            Score = council.Score,
+            Members = council.Members.ToList()
+        };
+    }
+
+    //DTO bai bao kem danh sach tac gia
+    public sealed class PaperData
+    {
+        public string Id { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string? Doi { get; set; }
+        public string Publisher { get; set; } = "";
+        public int PublishedYear { get; set; }
+        public List<PaperAuthor> Authors { get; set; } = [];
+
+        public static PaperData FromModel(Paper paper) => new()
+        {
+            Id = paper.Id,
+            Title = paper.Title,
+            Doi = paper.Doi,
+            Publisher = paper.Publisher,
+            PublishedYear = paper.PublishedYear,
+            Authors = paper.Authors.ToList()
+        };
+    }
+
+    //DTO san pham ban giao
+    public sealed class DeliverableData
+    {
+        public string Id { get; set; } = "";
+        public string ProjectId { get; set; } = "";
+        public string TypeId { get; set; } = "";
+        public string Title { get; set; } = "";
+        public int Quantity { get; set; }
+
+        public static DeliverableData FromModel(ProjectDeliverable item) => new()
+        {
+            Id = item.Id,
+            ProjectId = item.ProjectId,
+            TypeId = item.TypeId,
+            Title = item.Title,
+            Quantity = item.Quantity
         };
     }
 }

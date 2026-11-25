@@ -4,9 +4,9 @@ Bài tập lớn môn Lập trình hướng đối tượng, thực hiện theo 
 
 ## 1. Phạm vi
 
-Phiên bản hiện tại có chức năng quản lý đơn vị và nhà nghiên cứu (UC01), đề xuất đề tài (UC02), gán thành viên và phê duyệt (UC03), quản lý nguồn và phân bổ kinh phí (UC04). Menu cũng có hai cách tổng hợp kinh phí, theo đề tài và theo nguồn. Việc đổi vai trò trong menu dùng để minh họa phân quyền.
+Phiên bản hiện tại có chức năng quản lý đơn vị và nhà nghiên cứu (UC01), đề xuất đề tài (UC02), gán thành viên và phê duyệt (UC03), quản lý nguồn và phân bổ kinh phí (UC04). Phân hệ B bổ sung lập hội đồng nghiệm thu (UC05), ghi điểm và hoàn thành đề tài (UC06), ghi bài báo và sản phẩm bàn giao (UC07), báo cáo và tra cứu (UC08). Menu có hai báo cáo kinh phí (theo đề tài, theo nguồn) và hai báo cáo đầu ra (theo đề tài, theo loại). Việc đổi vai trò trong menu dùng để minh họa phân quyền.
 
-Phạm vi thiết kế của nhóm gồm tám ca sử dụng. Luồng từ lập hội đồng đến nghiệm thu, ghi nhận đầu ra và báo cáo kết quả vẫn cần tích hợp với phân hệ B. Xem [đặc tả nghiệp vụ](docs/scope.md) và [sơ đồ UML](docs/uml.md).
+Phạm vi thiết kế của nhóm gồm tám ca sử dụng. Luồng đầy đủ: nhà nghiên cứu → đề tài → chủ nhiệm → duyệt → kinh phí → hội đồng → điểm → đầu ra → hoàn thành → báo cáo. Xem [đặc tả nghiệp vụ](docs/scope.md) và [sơ đồ UML](docs/uml.md).
 
 ## 2. Tổ chức mã nguồn
 
@@ -17,7 +17,7 @@ Phạm vi thiết kế của nhóm gồm tám ca sử dụng. Luồng từ lập
 | `Data/` | Kho dữ liệu trong bộ nhớ, kho JSON và dữ liệu mẫu. |
 | `QLNCKH_OOP_FINAL.Tests/` | Bộ kiểm thử nghiệp vụ bằng kho dữ liệu trong bộ nhớ. |
 
-`ResearchProject` dùng State để xử lý chuyển trạng thái. Báo cáo kinh phí dùng hai cài đặt của `IReportStrategy`, theo đề tài và theo nguồn. `ICompletionEvidence` là hợp đồng để phân hệ nghiệm thu cung cấp điều kiện hoàn thành đề tài.
+`ResearchProject` dùng State để xử lý chuyển trạng thái. Báo cáo kinh phí dùng hai cài đặt của `IReportStrategy`, theo đề tài và theo nguồn. `ICompletionEvidence` là hợp đồng để phân hệ nghiệm thu cung cấp điều kiện hoàn thành đề tài, do `ResultCompletionEvidence` (phân hệ B) cài đặt trên dữ liệu thật. UC07 dùng Factory Method (`ResearchOutputCreator`, `PaperCreator`, `DeliverableCreator`) để tạo `Paper` hoặc `ProjectDeliverable`, cùng kế thừa `ResearchOutput`. Báo cáo đầu ra dùng thêm `OutputByProjectStrategy` và `OutputByTypeStrategy`.
 
 ## 3. Cài đặt và chạy
 
@@ -46,7 +46,7 @@ Sao chép cả thư mục `dist` để giữ tệp thực thi, các tệp .NET, 
 dotnet run --project .\QLNCKH_OOP_FINAL.Tests\QLNCKH_OOP_FINAL.Tests.csproj
 ```
 
-Bộ kiểm thử phần A có 26 ca. Mỗi ca dùng kho trong bộ nhớ. Chương trình in kết quả từng ca và trả mã thoát khác 0 nếu có ca thất bại. Ca hoàn thành đề tài dùng nguồn bằng chứng giả lập để kiểm tra `ICompletionEvidence`.
+Bộ kiểm thử có 26 ca phần A và 21 ca phần B (B-T11 đến B-T20 cùng các ca kiểm quyền, Factory Method, Strategy, tra cứu). Mỗi ca dùng kho trong bộ nhớ. Chương trình in kết quả từng ca và trả mã thoát khác 0 nếu có ca thất bại. Ca hoàn thành đề tài dùng nguồn bằng chứng giả lập để kiểm tra `ICompletionEvidence`.
 
 ## 5. Kịch bản trình diễn UC01–UC04
 
