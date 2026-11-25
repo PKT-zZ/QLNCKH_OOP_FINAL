@@ -60,5 +60,40 @@
   "sources": [
     { "id": "F01", "name": "Quỹ Nghiên cứu Khoa học Trường",           "type": "Nội bộ" },
     { "id": "F02", "name": "Quỹ Phát triển KH&CN Quốc gia (NAFOSTED)", "type": "Ngân sách nhà nước" }
+  ],
+  "deliverableTypes": [
+    { "id": "DT01", "name": "Phần mềm" },
+    { "id": "DT02", "name": "Báo cáo kỹ thuật" }
+  ],
+  "councils": [
+    {
+      "id": "HD01",
+      "projectId": "P002",
+      "evaluationDate": "2026-11-20",
+      "score": null,
+      "members": [
+        { "councilId": "HD01", "researcherId": "R001", "role": "Chairman" },
+        { "councilId": "HD01", "researcherId": "R004", "role": "Member" }
+      ]
+    }
+  ],
+  "papers": [
+    {
+      "id": "PA01",
+      "title": "Tối ưu hóa tìm kiếm A* trên đồ thị đường bộ cỡ lớn",
+      "doi": "10.1000/nckh.2026.001",
+      "publisher": "Tạp chí Khoa học và Công nghệ",
+      "publishedYear": 2026,
+      "authors": [
+        { "paperId": "PA01", "researcherId": "R003", "authorOrder": 1, "isCorresponding": true },
+        { "paperId": "PA01", "researcherId": "R004", "authorOrder": 2, "isCorresponding": false }
+      ]
+    }
+  ],
+  "paperLinks": [
+    { "projectId": "P002", "paperId": "PA01" }
+  ],
+  "deliverables": [
+    { "id": "SP01", "projectId": "P002", "typeId": "DT01", "title": "Thư viện tìm kiếm đồ thị GraphFind", "quantity": 1 }
   ]
 }
