@@ -27,8 +27,7 @@ public sealed class OutputService(IPeopleRepository people, IProjectRepository p
         if (paper.Doi is not null && results.Papers.Any(p => paper.Doi.Equals(p.Doi, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException("DOI đã tồn tại.");
 
-        results.Save(paper);
-        results.Save(new ProjectPaperLink(project.Id, paper.Id));
+        results.SavePaperWithLink(paper, project.Id);
         return paper;
     }
 

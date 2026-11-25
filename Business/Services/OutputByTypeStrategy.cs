@@ -20,7 +20,9 @@ public sealed class OutputByTypeStrategy(IResultRepository results) : IReportStr
             {
                 var type = results.FindDeliverableType(g.Key)
                     ?? throw new InvalidDataException($"Loại sản phẩm {g.Key} không tồn tại.");
-                return new ReportRow(type.Id, type.Name, g.Sum(d => d.Quantity), "sản phẩm", $"{g.Count()} lần ghi nhận");
+                // Từng số lượng là int, nhưng tổng của cả loại có thể vượt giới hạn int.
+                var total = g.Sum(d => (decimal)d.Quantity);
+                return new ReportRow(type.Id, type.Name, total, "sản phẩm", $"{g.Count()} lần ghi nhận");
             }));
         return rows;
     }

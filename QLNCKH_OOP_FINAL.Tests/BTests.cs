@@ -18,6 +18,7 @@ internal static class BTests
             ("B-T11", "Lập hội đồng hợp lệ thành công", ValidCouncil),
             ("B-T12", "Gán Chairman thứ hai bị từ chối", SecondChairman),
             ("B-T13", "Một nhà nghiên cứu lặp trong hội đồng bị từ chối", DuplicateCouncilMember),
+            ("B-ROSTER-LOCK", "Điểm 0 cũng khóa danh sách hội đồng", LockCouncilRosterAtFirstScore),
             ("B-T14a", "Điểm -0.1 bị từ chối", () => RejectScore(-0.1m)),
             ("B-T14b", "Điểm 10.1 bị từ chối", () => RejectScore(10.1m)),
             ("B-T14c", "Điểm biên 0 và 10 được chấp nhận", BoundaryScores),
@@ -34,7 +35,9 @@ internal static class BTests
             ("B-T20", "Báo cáo sau luồng liên thông đúng tổng tiền và danh sách đầu ra", EndToEndReport),
             ("B-PERM", "Service tự kiểm tra vai trò UC05-08", ServiceAuthorization),
             ("B-FACTORY", "Hai creator tạo hai lớp con, đa hình GetDisplaySummary", FactoryMethod),
+            ("B-PAPER-SAVE", "Ghi bài báo thất bại không tạo bài hoặc liên kết riêng lẻ", RejectFailedPaperSave),
             ("B-STRATEGY-TYPE", "Strategy theo loại gom đúng bài báo và sản phẩm", OutputByType),
+            ("B-STRATEGY-TYPE-RANGE", "Tổng sản phẩm theo loại có thể vượt giới hạn int", LargeOutputQuantityTotal),
             ("B-LOOKUP", "Tra cứu theo mã và trạng thái", Lookup)
         };
 
@@ -60,9 +63,9 @@ internal static class BTests
         EvaluationService Evaluation, OutputService Outputs);
 
     // P001 đang Active, chủ nhiệm R001, thành viên R002. R003, R004 ngoài đề tài (dùng cho hội đồng).
-    private static Ctx Setup()
+    private static Ctx Setup(InMemoryResearchRepository? data = null)
     {
-        var data = new InMemoryResearchRepository();
+        data ??= new InMemoryResearchRepository();
         data.Save(new Department("D01", "Khoa CNTT", new DateOnly(2000, 1, 1)));
         data.Save(new Researcher("R001", "D01", "Nguyễn An", "an@university.edu.vn"));
         data.Save(new Researcher("R002", "D01", "Trần Bình", "binh@university.edu.vn"));
@@ -79,6 +82,21 @@ internal static class BTests
         projects.Approve(Officer, "P001");
         return new Ctx(data, projects, new FundingService(data),
             new EvaluationService(data, data, data), new OutputService(data, data, data));
+    }
+
+    // Mô phỏng kho từ chối thao tác ghi cả cặp để phát hiện nếu service quay lại hai lần Save.
+    private sealed class FailingPaperRepository : InMemoryResearchRepository
+    {
+        public override void SavePaperWithLink(Paper paper, string projectId) =>
+            throw new DataPersistenceException("Lỗi ghi giả lập.");
+    }
+
+    private static void RejectFailedPaperSave()
+    {
+        var x = Setup(new FailingPaperRepository());
+        MustThrow<DataPersistenceException>(() => x.Outputs.AddPaper(Leader, Paper()));
+        Check(x.Data.Papers.Count == 0 && x.Data.PaperLinks.Count == 0,
+            "Lỗi ghi bài báo đã để lại dữ liệu dở dang.");
     }
 
     private static EvaluationCouncil NewCouncil(Ctx x, string id = "HD01")
@@ -133,6 +151,16 @@ internal static class BTests
         MustThrow<InvalidOperationException>(() => x.Evaluation.AssignMember(Officer, "HD01", "r004", CouncilRole.Member));
         MustThrow<InvalidOperationException>(() => x.Evaluation.AssignMember(Officer, "HD01", "R004", CouncilRole.Chairman));
         Check(council.Members.Count == 2, "Thành viên lặp vẫn được lưu.");
+    }
+
+    private static void LockCouncilRosterAtFirstScore()
+    {
+        var x = Setup();
+        var council = NewCouncil(x);
+        x.Evaluation.RecordScore(Chair, "HD01", 0m);
+        MustThrow<InvalidOperationException>(() => x.Evaluation.AssignMember(Officer, "HD01", "R002", CouncilRole.Member));
+        Check(council.Members.Count == 2 && council.Members.All(m => m.ResearcherId != "R002"),
+            "Danh sách hội đồng bị thay đổi sau khi chấm điểm.");
     }
 
     private static void RejectScore(decimal score)
@@ -309,6 +337,16 @@ internal static class BTests
               rows[1].Key == "DT01" && rows[1].Value == 5 && rows[1].Detail == "2 lần ghi nhận" &&
               rows[2].Key == "DT02" && rows[2].Value == 1,
             "Strategy chưa gom đúng theo loại.");
+    }
+
+    private static void LargeOutputQuantityTotal()
+    {
+        var x = Setup();
+        x.Outputs.AddDeliverable(Leader, Deliverable("SP01", int.MaxValue));
+        x.Outputs.AddDeliverable(Leader, Deliverable("SP02", 1));
+        var row = new OutputByTypeStrategy(x.Data).BuildRows().Single(r => r.Key == "DT01");
+        Check(row.Value == 2147483648m && row.Detail == "2 lần ghi nhận",
+            "Tổng số lượng hoặc số lần ghi nhận sai khi tổng vượt giới hạn int.");
     }
 
     private static void Lookup()

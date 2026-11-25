@@ -7,6 +7,7 @@ using QLNCKH_OOP_FINAL.Data;
 // Mỗi ca tạo kho dữ liệu mới nên không phụ thuộc thứ tự chạy.
 ATests.Run();
 BTests.Run();
+JsonLoadTests.Run();
 
 internal static class ATests
 {
@@ -27,6 +28,7 @@ internal static class ATests
             ("A-T08", "Không duyệt hai lần", InvalidTransition),
             ("A-T09", "Số tiền phân bổ phải dương", InvalidAmount),
             ("A-T10", "Nhiều đợt cùng nguồn được cộng đúng", MultipleAllocations),
+            ("A-FUND-COMPLETED", "Chốt kinh phí khi đề tài hoàn thành", FreezeFundingOnCompletion),
             ("A-PERM", "Service tự kiểm tra vai trò", ServiceAuthorization),
             ("A-BRIDGE", "Hoàn thành qua bằng chứng do B cung cấp", CompletionBridge),
             ("A-SOURCE", "Strategy cộng kinh phí theo nguồn", FundingBySource),
@@ -168,6 +170,25 @@ internal static class ATests
         Check(x.Funding.TotalForProject("P001") == 400_000m, "Tổng tiền cấp không đúng.");
         var report = new FundingByProjectStrategy(x.Data).BuildRows();
         Check(report.Count == 1 && report[0].Value == 400_000m, "Strategy báo cáo sai tổng tiền.");
+    }
+
+    private static void FreezeFundingOnCompletion()
+    {
+        var x = Setup();
+        var project = NewProject(x.Projects);
+        var date = new DateOnly(2026, 11, 6);
+
+        // Cấp kinh phí trước và sau phê duyệt, rồi xác nhận nghiệm thu như luồng nghiệp vụ.
+        x.Funding.Allocate(Officer, "A001", project.Id, "F01", 100m, date);
+        x.Projects.AssignMember(Officer, project.Id, "R001", ProjectRole.Leader);
+        x.Projects.Approve(Officer, project.Id);
+        x.Funding.Allocate(Officer, "A002", project.Id, "F01", 50m, date);
+        x.Projects.Complete(Officer, project.Id, new FakeCompletionEvidence(true, true));
+
+        MustThrow<InvalidOperationException>(() =>
+            x.Funding.Allocate(Officer, "A003", project.Id, "F01", 25m, date));
+        Check(project.Allocations.Count == 2 && x.Funding.TotalForProject(project.Id) == 150m,
+            "Từ chối cấp sau nghiệm thu phải giữ nguyên số đợt và tổng kinh phí đã chốt.");
     }
 
     private static void ServiceAuthorization()

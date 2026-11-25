@@ -2,7 +2,7 @@
 
 ## 1. Mô tả bài toán
 
-Bài tập lớn mô phỏng quy trình quản lý đề tài nghiên cứu khoa học tại trường đại học. Phạm vi thiết kế gồm đề xuất, phê duyệt, cấp kinh phí, nghiệm thu, ghi nhận đầu ra và tổng hợp báo cáo. Menu hiện có UC01–UC04 và hai báo cáo kinh phí thuộc UC08. Các luồng hội đồng, nghiệm thu và đầu ra ở mục 3 là thiết kế tích hợp. Xem [README](../README.md) để chạy chương trình và [UML](uml.md) để đối chiếu mô hình.
+Bài tập lớn mô phỏng quy trình quản lý đề tài nghiên cứu khoa học tại trường đại học. Phạm vi thiết kế gồm đề xuất, phê duyệt, cấp kinh phí, nghiệm thu, ghi nhận đầu ra và tổng hợp báo cáo. Menu cung cấp đủ tám ca sử dụng; chuyên viên có thể theo dõi đề tài từ lúc đề xuất đến lúc nghiệm thu. Xem [README](../README.md) để chạy chương trình và [UML](uml.md) để đối chiếu mô hình.
 
 ---
 
@@ -12,9 +12,9 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 
 | Tác nhân | Ký hiệu trong code | Vai trò trong hệ thống |
 |---|---|---|
-| **Nhà nghiên cứu** | `UserRole.Researcher` | Đề xuất đề tài bằng mã nhà nghiên cứu đã có. Khi tích hợp UC07, chỉ ghi nhận đầu ra cho đề tài mình tham gia. |
-| **Chuyên viên quản lý khoa học** | `UserRole.Officer` | Quản lý hồ sơ đơn vị và nhà nghiên cứu, gán thành viên, duyệt đề tài, cấp kinh phí và xem báo cáo kinh phí. Phụ trách lập hội đồng và xác nhận nghiệm thu trong thiết kế tích hợp. |
-| **Chủ tịch hội đồng** | `UserRole.CouncilChair` | Ghi điểm cho hội đồng mình chủ trì trong thiết kế UC06. Menu hiện cho phép chọn vai trò để minh họa phân quyền. |
+| **Nhà nghiên cứu** | `UserRole.Researcher` | Đề xuất đề tài bằng mã nhà nghiên cứu đã có. Ghi nhận đầu ra cho đề tài đang thực hiện mà mình tham gia. |
+| **Chuyên viên quản lý khoa học** | `UserRole.Officer` | Quản lý hồ sơ đơn vị và nhà nghiên cứu, gán thành viên, duyệt đề tài, cấp kinh phí và xem báo cáo kinh phí. Lập hội đồng, xác nhận nghiệm thu, xem báo cáo đầu ra và tra cứu đề tài. |
+| **Chủ tịch hội đồng** | `UserRole.CouncilChair` | Ghi điểm cho hội đồng mình chủ trì khi đề tài đang thực hiện. |
 
 ---
 
@@ -52,7 +52,8 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 - **Mô tả:** Khai báo các nguồn kinh phí (quỹ trường, ngân sách nhà nước, tài trợ ngoài). Cấp tiền từng đợt cho đề tài, có thể cấp nhiều lần từ cùng một nguồn hoặc từ nhiều nguồn khác nhau.
 - **Dữ liệu vào (nguồn):** Mã nguồn, tên nguồn, loại nguồn.
 - **Dữ liệu vào (phân bổ):** Mã đợt, mã đề tài, mã nguồn, số tiền, ngày cấp.
-- **Điều kiện hợp lệ:** Mã nguồn mới và mã đợt cấp được bỏ khoảng trắng hai đầu trước khi tra trùng, không phân biệt hoa thường. Mã đợt cấp phải duy nhất trên tất cả đề tài. Đề tài và nguồn phải tồn tại. Số tiền dùng `decimal`, phải dương và không làm tổng kinh phí toàn hệ thống vượt phạm vi của kiểu số này.
+- **Điều kiện hợp lệ:** Mã nguồn mới và mã đợt cấp được bỏ khoảng trắng hai đầu trước khi tra trùng, không phân biệt hoa thường. Mã đợt cấp phải duy nhất trên tất cả đề tài. Đề tài và nguồn phải tồn tại. Menu 9 nhận số đồng nguyên dương, chỉ gồm các chữ số (ví dụ `1000000`). Số tiền lưu bằng `decimal`, phải dương và không làm tổng kinh phí toàn hệ thống vượt phạm vi của kiểu số này.
+- **Mốc khóa kinh phí.** Chuyên viên có thể cấp thêm kinh phí khi đề tài ở `Pending` hoặc `Active`. Sau khi Chuyên viên xác nhận hoàn thành và đề tài chuyển sang `Completed`, chương trình từ chối khoản cấp mới và giữ nguyên các khoản đã lưu.
 - **Dữ liệu ra:** Chương trình lưu khoản cấp và hiển thị tổng kinh phí tính từ các đợt của đề tài.
 - **Hàm điều khiển:** `FundingService.SaveSource()`, `FundingService.Allocate()`, `FundingService.TotalForProject()`.
 
@@ -60,12 +61,13 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 
 ### Phân hệ B — NGUYỄN VIỆT HOÀNG
 
-UC05–UC07 và phần đầu ra của UC08 mô tả luồng dự kiến. Mã hiện tại đã có `ProjectService.Complete` và `ICompletionEvidence` để thử điều kiện hoàn thành với bằng chứng giả lập. Menu chưa nối luồng này với dữ liệu hội đồng và đầu ra thật.
+Ở menu 16, `ProjectService.Complete` nhận `ResultCompletionEvidence` để kiểm tra điểm và đầu ra của đúng đề tài trong kho đang dùng.
 
 #### UC05: Thành lập hội đồng nghiệm thu
 - **Tác nhân:** Chuyên viên.
 - **Mô tả:** Thành lập một hội đồng đánh giá kết quả nghiên cứu cho đề tài đang `Active`, gán Chủ tịch và các ủy viên hội đồng.
-- **Điều kiện hợp lệ:** Mỗi đề tài chỉ có tối đa 1 hội đồng; hội đồng có đúng 1 Chủ tịch; không được gán 1 người 2 vai trò trong cùng hội đồng.
+- **Điều kiện hợp lệ:** Mỗi đề tài chỉ có tối đa 1 hội đồng; hội đồng mới có thể chưa có thành viên, chỉ được gán tối đa một Chủ tịch và phải có Chủ tịch trước khi ghi điểm; không được gán 1 người 2 vai trò trong cùng hội đồng.
+- Danh sách hội đồng được khóa ngay sau lần ghi điểm đầu tiên, kể cả điểm `0`. Chủ tịch vẫn có thể sửa điểm khi đề tài còn ở trạng thái `Active`.
 - **Hàm điều khiển:** `EvaluationService.CreateCouncil()`, `EvaluationService.AssignMember()`.
 
 #### UC06: Chấm điểm và nghiệm thu hoàn thành đề tài
@@ -77,13 +79,14 @@ UC05–UC07 và phần đầu ra của UC08 mô tả luồng dự kiến. Mã hi
 #### UC07: Ghi nhận kết quả đầu ra nghiên cứu
 - **Tác nhân:** Nhà nghiên cứu.
 - **Mô tả:** Nhà nghiên cứu ghi nhận bài báo khoa học (kèm danh sách tác giả, DOI, nhà xuất bản) hoặc sản phẩm bàn giao thực tế, liên kết với đề tài.
-- **Điều kiện hợp lệ:** Người ghi nhận phải tham gia đề tài. Bài báo có ít nhất một tác giả và đúng một tác giả liên hệ. Thứ tự tác giả không trùng. DOI phải duy nhất nếu có. Sản phẩm có loại hợp lệ và số lượng lớn hơn 0.
+- **Điều kiện hợp lệ:** Người ghi nhận phải có hồ sơ và tham gia đề tài đang `Active`. Với bài báo, người ghi phải có tên trong danh sách tác giả và mọi tác giả đều phải có hồ sơ. Bài báo có ít nhất một tác giả và đúng một tác giả liên hệ. Thứ tự tác giả không trùng. DOI phải duy nhất nếu có. Sản phẩm có loại hợp lệ và số lượng lớn hơn 0.
 - **Hàm điều khiển:** `OutputService.AddPaper()`, `OutputService.AddDeliverable()`.
+- Bài báo mới và liên kết với đề tài được ghi cùng một lần vào JSON. Nếu ghi thất bại, phiên dừng và tệp chính giữ dữ liệu của lần lưu thành công gần nhất.
 
 #### UC08: Báo cáo tổng hợp và tra cứu
 - **Tác nhân:** Chuyên viên.
-- **Đã có:** Menu 11 và 12 tổng hợp kinh phí theo đề tài và theo nguồn. Menu 1 hiển thị danh sách đề tài và trạng thái hiện tại.
-- **Dự kiến tích hợp:** Lọc danh sách theo trạng thái và thống kê kết quả đầu ra theo đề tài. Thống kê theo loại sản phẩm là hướng mở rộng.
+- **Danh sách và báo cáo.** Mọi vai trò có thể dùng menu 1 để xem mã, tên, trạng thái và số lượng thành viên của đề tài. Chuyên viên xem kinh phí theo đề tài ở menu 11 và theo nguồn ở menu 12.
+- **Menu 19–21.** Menu 19 đếm bản ghi đầu ra của từng đề tài. Menu 20 đếm bài báo và cộng số lượng sản phẩm theo loại. Menu 21 lọc theo mã, trạng thái hoặc cả hai bằng `ProjectLookupService.Search`.
 - **Dữ liệu ra:** Bảng báo cáo dạng dòng `ReportRow(Key, Label, Value, Unit, Detail)`. Có thể bỏ trống `Detail`.
 - **Hàm điều khiển:** `ReportService.Generate(CurrentUserContext user, IReportStrategy strategy)` kiểm quyền trước khi gọi `strategy.BuildRows()`.
 
@@ -98,4 +101,4 @@ UC05–UC07 và phần đầu ra của UC08 mô tả luồng dự kiến. Mã hi
 - Quản lý nhiều học kỳ, nhiều trường hoặc cấp vùng miền.
 - Quy trình thanh toán, giải ngân hay chứng từ tài chính chi tiết.
 - Chức năng upload/đính kèm file báo cáo hay tài liệu dạng PDF.
-- CRUD đầy đủ cho mọi danh mục. Loại đề tài hiện lấy từ seed. Loại sản phẩm là danh mục dự kiến khi tích hợp đầu ra.
+- CRUD đầy đủ cho mọi danh mục. Loại đề tài hiện lấy từ seed. Loại sản phẩm được nạp từ seed tích hợp.

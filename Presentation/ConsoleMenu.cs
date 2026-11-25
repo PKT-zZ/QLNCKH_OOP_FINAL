@@ -33,6 +33,8 @@ public sealed class ConsoleMenu
     public void Run()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        // Kịch bản qua stdin dùng UTF-8 để tên đề tài và sản phẩm giữ đúng dấu.
+        if (Console.IsInputRedirected) Console.InputEncoding = System.Text.Encoding.UTF8;
         Console.WriteLine("╔══════════════════════════════════════════════════════╗");
         Console.WriteLine("║        HỆ THỐNG QUẢN LÝ NGHIÊN CỨU KHOA HỌC          ║");
         Console.WriteLine("╚══════════════════════════════════════════════════════╝");
@@ -98,14 +100,14 @@ public sealed class ConsoleMenu
     {
         switch (choice)
         {
-            // Xem tổng quan đề tài
+            // Danh sách chung hiển thị tiến độ. Chuyên viên xem kinh phí trong báo cáo.
             case "1":
                 var projects = _data.Projects.OrderBy(p => p.Id).ToList();
                 if (!projects.Any()) { Console.WriteLine("Chưa có đề tài nào trong hệ thống."); break; }
-                Console.WriteLine($"\n{"Mã",-6} {"Tên đề tài",-42} {"Trạng thái",-10} {"SL thành viên",-14} {"Tổng kinh phí",14}");
-                Console.WriteLine(new string('─', 92));
+                Console.WriteLine($"\n{"Mã",-6} {"Tên đề tài",-42} {"Trạng thái",-10} SL thành viên");
+                Console.WriteLine(new string('─', 74));
                 foreach (var p in projects)
-                    Console.WriteLine($"{p.Id,-6} {Truncate(p.Title, 42),-42} {p.Status,-10} {p.Members.Count,-14} {p.TotalFunding,14:N0} đ");
+                    Console.WriteLine($"{p.Id,-6} {Truncate(p.Title, 42),-42} {p.Status,-10} {p.Members.Count}");
                 break;
 
             // Đổi vai trò
@@ -198,7 +200,7 @@ public sealed class ConsoleMenu
                 var allocId = Read("Mã đợt phân bổ: ");
                 var allocProjId = Read("Mã đề tài: ");
                 var allocSourceId = Read("Mã nguồn kinh phí (F01/F02): ");
-                var allocAmount = ReadPositiveDecimal("Số tiền (VND): ");
+                var allocAmount = ReadFundingAmount("Số tiền VND (nhập số nguyên, ví dụ 1000000): ");
                 var allocDate = ReadDate("Ngày phân bổ (yyyy-MM-dd): ");
                 _funding.Allocate(_user, allocId, allocProjId, allocSourceId, allocAmount, allocDate);
                 Console.WriteLine($"Đã phân bổ kinh phí. Tổng kinh phí đề tài [{allocProjId}]: {_funding.TotalForProject(allocProjId):N0} đ");
@@ -341,25 +343,34 @@ public sealed class ConsoleMenu
         return Console.ReadLine()?.Trim() ?? throw new InvalidOperationException("Không có dữ liệu nhập.");
     }
 
-    private static decimal ReadPositiveDecimal(string prompt)
+    private static decimal ReadFundingAmount(string prompt)
     {
         while (true)
         {
             var input = Read(prompt);
-            if (decimal.TryParse(input, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)
+            if (decimal.TryParse(input, NumberStyles.None, CultureInfo.InvariantCulture, out var amount)
                 && amount > 0)
                 return amount;
 
-            Console.WriteLine("[Lỗi] Số tiền phải là số dương hợp lệ trong phạm vi kiểu decimal. Vui lòng nhập lại.");
+            Console.WriteLine("[Lỗi] Hãy nhập số đồng nguyên dương trong phạm vi decimal, chỉ dùng các chữ số từ 0 đến 9.");
         }
     }
 
-    private static int ReadInt(string prompt) =>
-        int.Parse(Read(prompt), NumberStyles.Integer, CultureInfo.InvariantCulture);
+    private static int ReadInt(string prompt)
+    {
+        if (int.TryParse(Read(prompt), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+            return value;
+        throw new FormatException("Hãy nhập số nguyên từ -2147483648 đến 2147483647.");
+    }
 
-    //chap nhan ca dau cham va dau phay thap phan (8.5 hoac 8,5); khoang [0,10] do EvaluationCouncil kiem
-    private static decimal ReadScore(string prompt) =>
-        decimal.Parse(Read(prompt).Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture);
+    // Chấp nhận cả 8.5 và 8,5. Hội đồng kiểm tra điểm có thuộc khoảng từ 0 đến 10.
+    private static decimal ReadScore(string prompt)
+    {
+        var input = Read(prompt).Replace(',', '.');
+        if (decimal.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out var score))
+            return score;
+        throw new FormatException("Hãy nhập điểm từ 0 đến 10, ví dụ 8,5.");
+    }
 
     private static DateOnly ReadDate(string prompt) =>
         DateOnly.ParseExact(Read(prompt), "yyyy-MM-dd", CultureInfo.InvariantCulture);

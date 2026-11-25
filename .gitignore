@@ -4,3 +4,4 @@
 .vs/
 *.user
 **/data/nckh.json
+/dist/

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using QLNCKH_OOP_FINAL.Business.Models;
+using QLNCKH_OOP_FINAL.Business.Services;
 
 namespace QLNCKH_OOP_FINAL.Data;
 
@@ -53,6 +54,21 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
     public override void Save(FundingSource value) { EnsureWritable(); base.Save(value); Persist(); }
     public override void Save(EvaluationCouncil value) { EnsureWritable(); base.Save(value); Persist(); }
     public override void Save(Paper value) { EnsureWritable(); base.Save(value); Persist(); }
+    public override void SavePaperWithLink(Paper paper, string projectId)
+    {
+        EnsureWritable();
+        base.SavePaperWithLink(paper, projectId);
+        try
+        {
+            // Một lần thay tệp chính cho cả bài báo và liên kết.
+            Persist();
+        }
+        catch (DataPersistenceException)
+        {
+            UndoNewPaper(paper.Id);
+            throw;
+        }
+    }
     public override void Save(ProjectDeliverable value) { EnsureWritable(); base.Save(value); Persist(); }
     public override void Save(ProjectPaperLink value) { EnsureWritable(); base.Save(value); Persist(); }
 
@@ -101,6 +117,22 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
             base.Save(project);
         }
         LoadResults(snapshot);
+        // Chỉ đối chiếu nghiệm thu khi đã nạp đủ hội đồng, bài báo và sản phẩm.
+        var evidence = new ResultCompletionEvidence(this);
+        foreach (var project in Projects.Where(p => p.Status == ProjectStatus.Completed))
+        {
+            if (!evidence.HasScoredCouncil(project.Id) || !evidence.HasResearchOutput(project.Id))
+                throw new InvalidDataException($"Đề tài {project.Id} đã hoàn thành nhưng thiếu điểm hội đồng hoặc đầu ra.");
+        }
+        try
+        {
+            // Mọi khoản cấp đều dương. Tổng này bảo đảm các phép cộng ở cả hai báo cáo đều nằm trong miền decimal.
+            _ = Projects.Sum(project => project.TotalFunding);
+        }
+        catch (OverflowException ex)
+        {
+            throw new InvalidDataException("Tổng kinh phí trong tệp dữ liệu vượt giới hạn decimal.", ex);
+        }
     }
 
     //phan he B: nap sau de tai vi tham chieu de tai, nguoi, loai san pham
@@ -175,11 +207,9 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
             "mã phân bổ kinh phí");
 
         // Phân hệ B: danh sách thiếu trong file cũ được hiểu là rỗng; phần tử null bị từ chối
-        snapshot.DeliverableTypes ??= [];
-        snapshot.Councils ??= [];
-        snapshot.Papers ??= [];
-        snapshot.PaperLinks ??= [];
-        snapshot.Deliverables ??= [];
+        if (snapshot.DeliverableTypes is null || snapshot.Councils is null || snapshot.Papers is null ||
+            snapshot.PaperLinks is null || snapshot.Deliverables is null)
+            throw new InvalidDataException("Danh sách hội đồng và đầu ra phải là một mảng JSON.");
         if (snapshot.DeliverableTypes.Any(x => x is null) || snapshot.Councils.Any(x => x is null || x.Members is null) ||
             snapshot.Papers.Any(x => x is null || x.Authors is null) || snapshot.PaperLinks.Any(x => x is null) ||
             snapshot.Deliverables.Any(x => x is null))
@@ -247,12 +277,13 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
 
     public sealed class AppSnapshot
     {
-        public List<Department> Departments { get; set; } = [];
-        public List<Researcher> Researchers { get; set; } = [];
-        public List<DepartmentHeadTerm> HeadTerms { get; set; } = [];
-        public List<ProjectCategory> Categories { get; set; } = [];
-        public List<ProjectData> Projects { get; set; } = [];
-        public List<FundingSource> Sources { get; set; } = [];
+        // Mảng rỗng là hợp lệ, nhưng thiếu khóa lõi là dấu hiệu tệp không đầy đủ.
+        [JsonRequired] public List<Department> Departments { get; set; } = [];
+        [JsonRequired] public List<Researcher> Researchers { get; set; } = [];
+        [JsonRequired] public List<DepartmentHeadTerm> HeadTerms { get; set; } = [];
+        [JsonRequired] public List<ProjectCategory> Categories { get; set; } = [];
+        [JsonRequired] public List<ProjectData> Projects { get; set; } = [];
+        [JsonRequired] public List<FundingSource> Sources { get; set; } = [];
         //phan he B
         public List<DeliverableType> DeliverableTypes { get; set; } = [];
         public List<CouncilData> Councils { get; set; } = [];
