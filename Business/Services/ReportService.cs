@@ -11,7 +11,7 @@ public sealed class ReportService
     {
         ArgumentNullException.ThrowIfNull(strategy);
         if (user.Role != UserRole.Officer)
-            throw new UnauthorizedAccessException("Chỉ Chuyên viên mới được xem báo cáo kinh phí.");
+            throw new UnauthorizedAccessException("Chỉ Chuyên viên mới được xem báo cáo.");
 
         return strategy.BuildRows().ToList();
     }
