@@ -26,10 +26,20 @@ internal static class JsonLoadTests
             ("Completed thiếu đầu ra", false, s =>
             {
                 CompleteSecondProject(s, 0m);
+                s["papers"] = new JsonArray();
                 s["paperLinks"] = new JsonArray();
                 s["deliverables"] = new JsonArray();
             }),
             ("Completed có điểm 0 và đầu ra", true, s => CompleteSecondProject(s, 0m)),
+            ("Có bài báo thiếu liên kết dù bài khác đã liên kết", false, s =>
+            {
+                var paper = s["papers"]![0]!.DeepClone();
+                paper["id"] = "PA-CHUA-LIEN-KET";
+                paper["doi"] = null;
+                foreach (var author in paper["authors"]!.AsArray())
+                    author!["paperId"] = "PA-CHUA-LIEN-KET";
+                s["papers"]!.AsArray().Add(paper);
+            }),
             ("Tràn tổng của một đề tài", false, s => Allocations(s, 0)[0]!["amount"] = decimal.MaxValue),
             ("Tràn tổng giữa hai đề tài", false, s => Allocations(s, 1)[0]!["amount"] = decimal.MaxValue),
             ("Tổng đúng bằng giới hạn decimal", true, s =>

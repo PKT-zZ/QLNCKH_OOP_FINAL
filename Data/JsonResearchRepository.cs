@@ -155,12 +155,21 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
                 throw new InvalidDataException("Bài báo có tác giả không tồn tại.");
             base.Save(paper);
         }
+        var linkedPaperIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var link in snapshot.PaperLinks)
         {
             if (FindProject(link.ProjectId) is null || FindPaper(link.PaperId) is null)
                 throw new InvalidDataException("Liên kết đề tài–bài báo tham chiếu sai.");
             base.Save(link);
+            linkedPaperIds.Add(link.PaperId);
         }
+        // Báo cáo theo loại và tra cứu đề tài phải dùng cùng các bài đã có liên kết.
+        foreach (var paper in Papers)
+        {
+            if (!linkedPaperIds.Contains(paper.Id))
+                throw new InvalidDataException($"Bài báo {paper.Id} chưa liên kết với đề tài.");
+        }
+
         foreach (var dto in snapshot.Deliverables)
         {
             if (FindProject(dto.ProjectId) is null || FindDeliverableType(dto.TypeId) is null)
