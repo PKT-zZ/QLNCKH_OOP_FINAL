@@ -6,6 +6,7 @@ using QLNCKH_OOP_FINAL.Data;
 // Bộ kiểm thử không dùng NuGet để chạy được ngay cả khi máy không có mạng.
 // Mỗi ca tạo kho dữ liệu mới nên không phụ thuộc thứ tự chạy.
 ATests.Run();
+BTests.Run();
 
 internal static class ATests
 {
