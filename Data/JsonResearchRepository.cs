@@ -141,8 +141,10 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
         foreach (var type in snapshot.DeliverableTypes) AddSeed(type);
         foreach (var dto in snapshot.Councils)
         {
-            if (FindProject(dto.ProjectId) is null)
+            var project = FindProject(dto.ProjectId);
+            if (project is null)
                 throw new InvalidDataException("Hội đồng tham chiếu đề tài không tồn tại.");
+            EnsureStarted(project, "hội đồng");
             var council = EvaluationCouncil.Restore(dto.Id, dto.ProjectId, dto.EvaluationDate, dto.Score, dto.Members);
             if (council.Members.Any(m => FindResearcher(m.ResearcherId) is null))
                 throw new InvalidDataException("Hội đồng có thành viên không tồn tại.");
@@ -158,8 +160,10 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
         var linkedPaperIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var link in snapshot.PaperLinks)
         {
-            if (FindProject(link.ProjectId) is null || FindPaper(link.PaperId) is null)
+            var project = FindProject(link.ProjectId);
+            if (project is null || FindPaper(link.PaperId) is null)
                 throw new InvalidDataException("Liên kết đề tài–bài báo tham chiếu sai.");
+            EnsureStarted(project, "liên kết bài báo");
             base.Save(link);
             linkedPaperIds.Add(link.PaperId);
         }
@@ -172,12 +176,21 @@ public sealed class JsonResearchRepository : InMemoryResearchRepository
 
         foreach (var dto in snapshot.Deliverables)
         {
-            if (FindProject(dto.ProjectId) is null || FindDeliverableType(dto.TypeId) is null)
+            var project = FindProject(dto.ProjectId);
+            if (project is null || FindDeliverableType(dto.TypeId) is null)
                 throw new InvalidDataException("Sản phẩm tham chiếu đề tài hoặc loại không tồn tại.");
+            EnsureStarted(project, "sản phẩm");
             var deliverable = new ProjectDeliverable(dto.Id, dto.ProjectId, dto.TypeId, dto.Title, dto.Quantity);
             deliverable.Validate();
             base.Save(deliverable);
         }
+    }
+
+    // Đề tài đã hoàn thành vẫn giữ hội đồng và đầu ra được tạo khi đang thực hiện.
+    private static void EnsureStarted(ResearchProject project, string result)
+    {
+        if (project.Status == ProjectStatus.Pending)
+            throw new InvalidDataException($"Đề tài {project.Id} đang chờ duyệt nên không thể có {result}.");
     }
 
     // Từ chối snapshot có mã/email trùng trước khi Load thay đổi bộ nhớ

@@ -20,7 +20,7 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 
 ## 3. Tám ca sử dụng
 
-### Phân hệ A — Nguyễn Khánh Toàn
+### Phân hệ A - Nguyễn Khánh Toàn
 
 #### UC01: Quản lý đơn vị và nhân sự
 - **Tác nhân:** Chuyên viên.
@@ -59,7 +59,7 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 
 ---
 
-### Phân hệ B — NGUYỄN VIỆT HOÀNG
+### Phân hệ B - NGUYỄN VIỆT HOÀNG
 
 Ở menu 16, `ProjectService.Complete` nhận `ResultCompletionEvidence` để kiểm tra điểm và đầu ra của đúng đề tài trong kho đang dùng.
 
@@ -84,7 +84,7 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 - **Nhập tác giả liên hệ ở menu 17.** Nhập `y` nếu là tác giả liên hệ hoặc `n` nếu không, chấp nhận cả chữ hoa. Nếu nhập giá trị khác, chương trình hỏi lại cùng câu hỏi.
 - **Sản phẩm bàn giao.** Loại sản phẩm phải tồn tại và số lượng phải là số nguyên dương.
 - **Hàm điều khiển:** `OutputService.AddPaper()`, `OutputService.AddDeliverable()`.
-- **Lưu và mở lại.** Bài báo mới và liên kết với đề tài được ghi cùng một lần vào JSON. Nếu ghi thất bại, phiên dừng và tệp chính giữ dữ liệu của lần lưu thành công gần nhất. Khi mở tệp, kho yêu cầu mỗi bài báo có ít nhất một liên kết đề tài hợp lệ. Nếu thiếu, ứng dụng báo mã bài và dừng trước khi vào menu.
+- **Lưu và mở lại.** Bài báo mới và liên kết với đề tài được ghi cùng một lần vào JSON. Nếu ghi thất bại, phiên dừng và tệp chính giữ dữ liệu của lần lưu thành công gần nhất. Khi mở tệp, kho yêu cầu mỗi bài báo có ít nhất một liên kết đề tài hợp lệ. Kho từ chối hội đồng, liên kết bài báo hoặc sản phẩm gắn với đề tài `Pending`, đồng thời giữ dữ liệu lịch sử của đề tài `Completed` khi hợp lệ.
 
 #### UC08: Báo cáo tổng hợp và tra cứu
 - **Tác nhân:** Chuyên viên.

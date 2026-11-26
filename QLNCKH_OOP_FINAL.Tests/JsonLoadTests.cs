@@ -31,6 +31,9 @@ internal static class JsonLoadTests
                 s["deliverables"] = new JsonArray();
             }),
             ("Completed có điểm 0 và đầu ra", true, s => CompleteSecondProject(s, 0m)),
+            ("Pending có hội đồng", false, s => MakeSecondProjectPending(s, "councils")),
+            ("Pending có liên kết bài báo", false, s => MakeSecondProjectPending(s, "paperLinks")),
+            ("Pending có sản phẩm", false, s => MakeSecondProjectPending(s, "deliverables")),
             ("Có bài báo thiếu liên kết dù bài khác đã liên kết", false, s =>
             {
                 var paper = s["papers"]![0]!.DeepClone();
@@ -95,7 +98,7 @@ internal static class JsonLoadTests
                 catch (Exception ex)
                 {
                     failures++;
-                    Console.WriteLine($"FAIL JSON: {name} — {ex.Message}");
+                    Console.WriteLine($"FAIL JSON: {name} - {ex.Message}");
                 }
             }
         }
@@ -109,6 +112,19 @@ internal static class JsonLoadTests
 
     private static JsonArray Allocations(JsonObject data, int project) =>
         data["projects"]![project]!["allocations"]!.AsArray();
+
+    // Giữ riêng từng loại kết quả của P002 để mỗi ca kiểm đúng một nhánh nạp.
+    private static void MakeSecondProjectPending(JsonObject data, string keptResult)
+    {
+        var project = data["projects"]![1]!;
+        project["status"] = "Pending";
+        project["history"] = new JsonArray();
+        foreach (var key in new[] { "councils", "paperLinks", "deliverables" })
+        {
+            if (key != keptResult) data[key] = new JsonArray();
+        }
+        if (keptResult != "paperLinks") data["papers"] = new JsonArray();
+    }
 
     private static void CompleteSecondProject(JsonObject data, decimal? score)
     {

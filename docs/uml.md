@@ -549,7 +549,7 @@ classDiagram
 
 Bốn sơ đồ minh họa các luồng tiêu biểu. Hai sơ đồ đầu theo dõi UC02–UC03 và UC04 của A. Hai sơ đồ sau theo dõi UC05–UC06 và UC07 của B.
 
-### 5.1. UC02–UC03 — Đề xuất, gán chủ nhiệm và duyệt
+### 5.1. UC02–UC03 - Đề xuất, gán chủ nhiệm và duyệt
 Thể hiện sự phối hợp giữa `ProjectService`, `ResearchProject`, `PendingState` và lưu vết vào `ProjectStatusHistory`.
 
 ```mermaid
@@ -601,7 +601,7 @@ sequenceDiagram
     UI-->>CV: Đề tài đã chuyển sang Active
 ```
 
-### 5.2. UC04 — Khai báo nguồn và phân bổ kinh phí
+### 5.2. UC04 - Khai báo nguồn và phân bổ kinh phí
 
 Sau khi tìm thấy đề tài, service kiểm tra trạng thái trước khi tạo khoản cấp. Đề tài đã hoàn thành giữ nguyên các khoản kinh phí đã lưu.
 
@@ -648,7 +648,7 @@ sequenceDiagram
     end
 ```
 
-### 5.3. UC05–UC06 — Hội đồng và nghiệm thu
+### 5.3. UC05–UC06 - Hội đồng và nghiệm thu
 
 Chủ tịch hội đồng ghi điểm. Chuyên viên gọi `ProjectService.Complete` với bằng chứng lấy từ dữ liệu nghiệm thu và đầu ra. Nhánh hoàn thành minh họa đề tài đang `Active`.
 
@@ -711,9 +711,9 @@ sequenceDiagram
     end
 ```
 
-### 5.4. UC07 — Ghi nhận đầu ra qua Factory Method
+### 5.4. UC07 - Ghi nhận đầu ra qua Factory Method
 
-Factory tạo đối tượng theo loại đầu ra. Service kiểm tra tham chiếu và các ràng buộc cần tra kho trước khi lưu. Menu 17 tạo liên kết đầu tiên khi ghi bài báo. Khi mở JSON, kho kiểm tra để mỗi bài báo đã lưu có ít nhất một liên kết đề tài hợp lệ.
+Factory tạo đối tượng theo loại đầu ra. Service kiểm tra tham chiếu và các ràng buộc cần tra kho trước khi lưu. Menu 17 tạo liên kết đầu tiên khi ghi bài báo. Khi mở JSON, kho kiểm tra mỗi bài báo có ít nhất một liên kết và từ chối hội đồng hoặc đầu ra của đề tài `Pending`. Đầu ra hợp lệ đã lưu của đề tài `Completed` vẫn được nạp.
 
 ```mermaid
 sequenceDiagram
