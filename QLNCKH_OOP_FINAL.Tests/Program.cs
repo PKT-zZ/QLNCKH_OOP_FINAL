@@ -240,6 +240,7 @@ internal static class ATests
         NewProject(x.Projects);
         NewProject(x.Projects, "P002");
         x.Funding.SaveSource(Officer, "F02", "Nguồn doanh nghiệp", "Bên ngoài");
+        x.Funding.SaveSource(Officer, "F03", "Nguồn chưa cấp kinh phí", "Nội bộ");
 
         // Hai đợt từ F01 ở hai đề tài phải gộp, F02 vẫn là dòng riêng.
         x.Funding.Allocate(Officer, "A001", "P001", "F01", 250_000m, new DateOnly(2026, 11, 6));
@@ -248,6 +249,8 @@ internal static class ATests
 
         IReportStrategy report = new FundingBySourceStrategy(x.Data);
         var rows = report.BuildRows();
+        Check(!rows.Any(row => row.Key.Equals("F03", StringComparison.OrdinalIgnoreCase)),
+            "Nguồn chưa cấp kinh phí không được xuất hiện trong báo cáo.");
         Check(report.Title == "Tổng kinh phí theo nguồn", "Tiêu đề báo cáo theo nguồn không đúng.");
         Check(rows.Count == 2 && rows[0].Key == "F01" && rows[0].Value == 400_000m &&
               rows[0].Detail == "2 đợt cấp" && rows[1].Key == "F02" && rows[1].Value == 80_000m,
