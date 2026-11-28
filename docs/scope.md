@@ -13,7 +13,7 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 | Tác nhân | Ký hiệu trong code | Vai trò trong hệ thống |
 |---|---|---|
 | **Nhà nghiên cứu** | `UserRole.Researcher` | Đề xuất đề tài bằng mã nhà nghiên cứu đã có. Ghi nhận đầu ra cho đề tài đang thực hiện mà mình tham gia. |
-| **Chuyên viên quản lý khoa học** | `UserRole.Officer` | Quản lý hồ sơ đơn vị và nhà nghiên cứu, gán thành viên, duyệt đề tài, cấp kinh phí và xem báo cáo kinh phí. Lập hội đồng, xác nhận nghiệm thu, xem báo cáo đầu ra và tra cứu đề tài. |
+| **Chuyên viên QLNCKH** | `UserRole.Officer` | Quản lý hồ sơ đơn vị và nhà nghiên cứu, gán thành viên, duyệt đề tài, cấp kinh phí và xem báo cáo kinh phí. Lập hội đồng, xác nhận hoàn thành đề tài, xem báo cáo đầu ra và tra cứu đề tài. |
 | **Chủ tịch hội đồng** | `UserRole.CouncilChair` | Ghi điểm cho hội đồng mình chủ trì khi đề tài đang thực hiện. |
 
 ---
@@ -38,9 +38,9 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 - **Dữ liệu ra:** Đề tài ở trạng thái `Pending`.
 - **Hàm điều khiển:** `ProjectService.ProposeProject()`.
 
-#### UC03: Gán chủ nhiệm và phê duyệt đề tài
+#### UC03: Gán thành viên và phê duyệt đề tài
 - **Tác nhân:** Chuyên viên.
-- **Mô tả:** Gán từng thành viên (vai trò Chủ nhiệm hoặc Thành viên) vào đề tài đang ở trạng thái Pending, sau đó phê duyệt để kích hoạt đề tài.
+- **Mô tả:** Gán từng thành viên (vai trò Chủ nhiệm hoặc Thành viên) vào đề tài đang ở trạng thái `Pending`, sau đó phê duyệt để kích hoạt đề tài.
 - **Dữ liệu vào (gán):** Mã đề tài, mã nhà nghiên cứu, vai trò (Leader/Member).
 - **Dữ liệu vào (duyệt):** Mã đề tài.
 - **Điều kiện hợp lệ:** Chỉ gán người và duyệt khi đề tài ở `Pending`. Nhà nghiên cứu phải tồn tại và chỉ được gán một lần trong đề tài. Đề tài có tối đa một chủ nhiệm trong lúc lập danh sách và phải có đúng một chủ nhiệm để được duyệt.
@@ -70,13 +70,14 @@ Thiết kế gồm ba tác nhân. Menu chọn vai trò để minh họa cách se
 - Danh sách hội đồng được khóa ngay sau lần ghi điểm đầu tiên, kể cả điểm `0`. Chủ tịch vẫn có thể sửa điểm khi đề tài còn ở trạng thái `Active`.
 - **Hàm điều khiển:** `EvaluationService.CreateCouncil()`, `EvaluationService.AssignMember()`.
 
-#### UC06: Chấm điểm và nghiệm thu hoàn thành đề tài
-- **Tác nhân:** Chủ tịch hội đồng (ghi điểm), Chuyên viên (xác nhận hoàn thành).
-- **Mô tả:** Chủ tịch hội đồng nhập điểm đánh giá. Sau khi có điểm và ít nhất một kết quả đầu ra, Chuyên viên xác nhận nghiệm thu và chuyển đề tài sang `Completed`.
+#### UC06: Ghi điểm và xác nhận hoàn thành đề tài
+- **UC06a – Ghi điểm nghiệm thu:** Chủ tịch hội đồng, mục 15.
+- **UC06b – Xác nhận hoàn thành:** Chuyên viên QLNCKH, mục 16.
+- **Mô tả:** Chủ tịch hội đồng nhập điểm đánh giá. Sau khi có điểm và ít nhất một kết quả đầu ra, chuyên viên xác nhận hoàn thành và chuyển đề tài sang `Completed`.
 - **Điều kiện hợp lệ:** Chỉ Chủ tịch của hội đồng đó được ghi điểm trong khoảng `[0, 10]`. Chuyên viên chỉ hoàn thành đề tài đang `Active` khi đã có điểm hội đồng và ít nhất một đầu ra.
 - **Hàm điều khiển:** `EvaluationService.RecordScore()`, `ProjectService.Complete(user, projectId, ICompletionEvidence)`.
 
-#### UC07: Ghi nhận kết quả đầu ra nghiên cứu
+#### UC07: Ghi nhận đầu ra nghiên cứu
 - **Tác nhân:** Nhà nghiên cứu.
 - **Mô tả:** Nhà nghiên cứu ghi nhận bài báo khoa học (kèm danh sách tác giả, DOI, nhà xuất bản) hoặc sản phẩm bàn giao thực tế, liên kết với đề tài.
 - **Điều kiện chung.** Người ghi nhận phải có hồ sơ và tham gia đề tài đang `Active`.
