@@ -2,11 +2,11 @@
 
 ## 1. Kiến trúc ba tầng
 
-Các sơ đồ mô tả tám ca sử dụng của bản tích hợp, từ khi lập đề tài đến khi tra cứu kết quả nghiệm thu. Xem [đặc tả nghiệp vụ](scope.md) và [README](../README.md).
+Các sơ đồ trình bày cấu trúc của bản tích hợp và bốn luồng nghiệp vụ tiêu biểu. Xem đủ tám ca sử dụng trong [đặc tả nghiệp vụ](scope.md) và [README](../README.md).
 
-Chương trình C# gồm ba tầng trong cùng project.
+Chương trình C# gồm ba tầng trong cùng project. Hình dưới là sơ đồ khối kiến trúc. Quan hệ lớp và giao diện kho dùng ký pháp UML ở mục 4.
 
-- **Presentation.** `ConsoleMenu` nhận lựa chọn và dữ liệu nhập, giữ vai trò hiện tại, gọi service và hiển thị kết quả hoặc lỗi. Menu khởi tạo kho JSON để đưa vào các service.
+- **Presentation.** `ConsoleMenu` nhận lựa chọn và dữ liệu nhập, giữ vai trò hiện tại, gọi service và hiển thị kết quả hoặc lỗi. Menu khởi tạo kho JSON, truyền kho vào service và đọc trực tiếp một số dữ liệu để hiển thị.
 - **Business.** Chứa mô hình, service, các giao diện và `CurrentUserContext`. Xử lý quy tắc nghiệp vụ mà không đọc hoặc ghi console, tệp dữ liệu.
 - **Data.** `InMemoryResearchRepository` hiện thực ba giao diện kho. `JsonResearchRepository` kế thừa lớp này và ghi đè các thao tác lưu để ghi `data/nckh.json`. Các ca nghiệp vụ dùng kho trong bộ nhớ. Nhóm ca nạp JSON mở ứng dụng với tệp dữ liệu riêng trong thư mục tạm.
 
@@ -39,29 +39,32 @@ graph TD
             CTX["CurrentUserContext<br/>(Researcher | Officer | CouncilChair)"]
         end
 
-        subgraph RepoInterfaces ["Giao diện"]
+        subgraph RepoInterfaces ["Giao diện nghiệp vụ"]
             IPeopleRepo["IPeopleRepository"]
             IProjectRepo["IProjectRepository"]
             IResultRepo["IResultRepository<br/>(Kho kết quả)"]
             IEvidence["ICompletionEvidence<br/>(Hợp đồng tích hợp A-B)"]
+            IStrategy["IReportStrategy"]
         end
     end
 
     subgraph Data ["Tầng Dữ liệu (Data Layer)"]
         JsonRepo["JsonResearchRepository<br/>(Nạp và lưu nckh.json)"]
-        MemRepo["InMemoryResearchRepository<br/>(Phục vụ Unit Test độc lập)"]
+        MemRepo["InMemoryResearchRepository<br/>(Lớp cơ sở của kho JSON, dùng trong kiểm thử)"]
         Snapshot["AppSnapshot và DTO<br/>(Giữ trường bổ sung ở gốc JSON)"]
     end
 
-    UI --> Services
+    UI -->|Gọi| Services
     UI --> CTX
-    UI --> JsonRepo
+    UI -->|Tạo, truyền vào service và đọc trực tiếp| JsonRepo
     Services --> DomainModels
-    Services --> Patterns
+    Entities --> StatePat
+    RS --> StratPat
+    OS --> FactPat
     Services --> RepoInterfaces
-    MemRepo -.-> IPeopleRepo
-    MemRepo -.-> IResultRepo
-    MemRepo -.-> IProjectRepo
+    MemRepo -. Hiện thực .-> IPeopleRepo
+    MemRepo -. Hiện thực .-> IResultRepo
+    MemRepo -. Hiện thực .-> IProjectRepo
     JsonRepo -->|Kế thừa| MemRepo
     ES -.-> IResultRepo
     OS -.-> IResultRepo
@@ -72,7 +75,7 @@ graph TD
 
 ## 2. Sơ đồ lớp nghiệp vụ
 
-Thiết kế tổng thể có 16 kiểu nghiệp vụ cụ thể, gồm 9 kiểu về nhân sự, đề tài, kinh phí và 7 kiểu về nghiệm thu, đầu ra. `ProjectStatusHistory` nằm trong nhóm 9 kiểu của A. `ResearchOutput` là lớp trừu tượng cho phần đầu ra.
+Thiết kế tổng thể có 16 kiểu nghiệp vụ cụ thể, gồm 9 kiểu về nhân sự, đề tài, kinh phí và 7 kiểu về nghiệm thu, đầu ra. `ProjectStatusHistory` là record thuộc nhóm A. `ResearchOutput` là lớp trừu tượng cho phần đầu ra. Bội số tác giả và liên kết đề tài áp dụng cho bài báo hợp lệ đã lưu. `Paper` vừa được khởi tạo có thể chưa có tác giả.
 
 ### Các kiểu nghiệp vụ
 1. **Dữ liệu nền**: `Department`, `Researcher`, `DepartmentHeadTerm`, `ProjectCategory`
@@ -151,6 +154,7 @@ classDiagram
     }
 
     class ProjectStatusHistory {
+        <<record>>
         +string ProjectId
         +ProjectStatus FromStatus
         +ProjectStatus ToStatus
@@ -237,8 +241,8 @@ classDiagram
     ProjectCategory "1" <-- "0..*" ResearchProject : Thuộc loại
 
     ResearchProject "1" *-- "0..*" ProjectParticipation : Danh sách thành viên
-    ResearchProject "1" *-- "0..*" ProjectStatusHistory : Lịch sử trạng thái
-    ResearchProject "1" o-- "0..*" FundingAllocation : Các đợt cấp tiền
+    ResearchProject "1" *-- "0..2" ProjectStatusHistory : Lịch sử trạng thái
+    ResearchProject "1" -- "0..*" FundingAllocation : Các đợt cấp tiền
 
     Researcher "1" <-- "0..*" ProjectParticipation : Đảm nhiệm vai trò
     FundingSource "1" <-- "0..*" FundingAllocation : Nguồn cấp tiền
@@ -357,10 +361,6 @@ classDiagram
         +Generate(CurrentUserContext user, IReportStrategy strategy) IReadOnlyList~ReportRow~
     }
 
-    class ProjectLookupService {
-        +Search(CurrentUserContext user, string? projectId, ProjectStatus? status) IReadOnlyList~ProjectSummary~
-    }
-
     ReportService ..> IReportStrategy : Gọi chiến lược nhận từ menu
     IReportStrategy ..> ReportRow : Trả về dữ liệu
     IReportStrategy <|.. FundingByProjectStrategy : Hiện thực (A)
@@ -425,7 +425,7 @@ classDiagram
 
 ## 4. Service và giao diện kho dữ liệu
 
-Service nhận giao diện thay vì tạo kho cụ thể. Sơ đồ ghi các phương thức chính. Menu 16 tạo `ResultCompletionEvidence` trên kho thật. `ProjectService.Complete` nhận `ICompletionEvidence` từ bên gọi. Bộ kiểm thử A dùng một đối tượng giả lập giao diện này.
+Service nhận các giao diện kho qua constructor. Đường liền tới giao diện kho biểu diễn tham chiếu được giữ trong đối tượng. Menu 16 tạo `ResultCompletionEvidence` trên kho thật. `ProjectService.Complete` nhận `ICompletionEvidence` từ bên gọi. Bộ kiểm thử A dùng một đối tượng giả lập giao diện này. Cài đặt thật gọi `FindCouncilByProject` để kiểm điểm và dùng `ResultQueries.OutputsOf` để tra bài báo đã liên kết cùng các sản phẩm bàn giao.
 
 ```mermaid
 classDiagram
@@ -458,6 +458,7 @@ classDiagram
         +FindDeliverable(string id) ProjectDeliverable?
         +FindDeliverableType(string id) DeliverableType?
         +IReadOnlyCollection~ProjectPaperLink~ PaperLinks
+        +IReadOnlyCollection~ProjectDeliverable~ Deliverables
         +Save(EvaluationCouncil council) void
         +Save(Paper paper) void
         +SavePaperWithLink(Paper paper, string projectId) void
@@ -468,6 +469,10 @@ classDiagram
         <<interface>>
         +HasScoredCouncil(string projectId) bool
         +HasResearchOutput(string projectId) bool
+    }
+
+    class IReportStrategy {
+        <<interface>>
     }
 
     %% Services
@@ -505,6 +510,19 @@ classDiagram
         +Generate(CurrentUserContext user, IReportStrategy strategy) IReadOnlyList~ReportRow~
     }
 
+    class ProjectLookupService {
+        +Search(CurrentUserContext user, string? projectId, ProjectStatus? status) IReadOnlyList~ProjectSummary~
+    }
+
+    class ProjectSummary {
+        <<record>>
+    }
+
+    class ResultCompletionEvidence {
+        +HasScoredCouncil(string projectId) bool
+        +HasResearchOutput(string projectId) bool
+    }
+
     class InMemoryResearchRepository {
         +Save(Department value) void
         +Save(Researcher value) void
@@ -524,19 +542,19 @@ classDiagram
     ProjectService --> IProjectRepository
     ProjectService ..> ICompletionEvidence : Kiểm tra bằng chứng
     FundingService --> IProjectRepository
-    EvaluationService ..> IProjectRepository
-    EvaluationService ..> IPeopleRepository
-    EvaluationService ..> IResultRepository
-    OutputService ..> IPeopleRepository
-    OutputService ..> IResultRepository
-    OutputService ..> IProjectRepository
+    EvaluationService --> IProjectRepository
+    EvaluationService --> IPeopleRepository
+    EvaluationService --> IResultRepository
+    OutputService --> IPeopleRepository
+    OutputService --> IResultRepository
+    OutputService --> IProjectRepository
     ReportService ..> IReportStrategy
 
     InMemoryResearchRepository ..|> IPeopleRepository
     ResultCompletionEvidence ..|> ICompletionEvidence
-    ResultCompletionEvidence ..> IResultRepository
-    ProjectLookupService ..> IProjectRepository
-    ProjectLookupService ..> IResultRepository
+    ResultCompletionEvidence --> IResultRepository
+    ProjectLookupService --> IProjectRepository
+    ProjectLookupService --> IResultRepository
     ProjectLookupService ..> ProjectSummary : Trả kết quả tra cứu
     InMemoryResearchRepository ..|> IResultRepository
     InMemoryResearchRepository ..|> IProjectRepository
@@ -550,7 +568,7 @@ classDiagram
 Bốn sơ đồ minh họa các luồng tiêu biểu. Hai sơ đồ đầu theo dõi UC02–UC03 và UC04 của A. Hai sơ đồ sau theo dõi UC05–UC06 và UC07 của B.
 
 ### 5.1. UC02–UC03 - Đề xuất, gán chủ nhiệm và duyệt
-Thể hiện sự phối hợp giữa `ProjectService`, `ResearchProject`, `PendingState` và lưu vết vào `ProjectStatusHistory`.
+Luồng thành công gồm ba lệnh menu độc lập. Nhà nghiên cứu đề xuất đề tài, sau đó chuyên viên gán chủ nhiệm và duyệt đề tài.
 
 ```mermaid
 sequenceDiagram
@@ -560,39 +578,42 @@ sequenceDiagram
     participant PS as ProjectService
     participant People as IPeopleRepository
     participant Repo as IProjectRepository
-    participant P as ResearchProject
-    participant State as PendingState
 
     %% UC02: Đề xuất
     NNC->>UI: 1. Nhập thông tin đề tài (Menu 5)
-    UI->>PS: ProposeProject(user, id, catId, title, start, end)
+    UI->>PS: ProposeProject(user, projectId, categoryId, title, startDate, endDate)
     PS->>PS: Kiểm quyền Researcher
     PS->>People: FindResearcher(user.ResearcherId)
-    PS->>Repo: FindCategory(catId)
+    PS->>Repo: FindCategory(categoryId)
     PS->>PS: Chuẩn hóa mã đề tài
     PS->>Repo: FindProject(normalizedId)
-    PS->>P: new ResearchProject(normalizedId, catId, title, start, end)
+    create participant P as ResearchProject
+    PS--)P: new ResearchProject(normalizedId, categoryId, title, startDate, endDate)
     PS->>Repo: Save(project)
+    PS-->>UI: project
     UI-->>NNC: Tạo thành công, trạng thái Pending
 
     %% UC03: Gán chủ nhiệm
     CV->>UI: 2. Gán chủ nhiệm đề tài (Menu 6)
-    UI->>PS: AssignMember(user, id, resId, ProjectRole.Leader)
+    UI->>PS: AssignMember(user, projectId, researcherId, ProjectRole.Leader)
     PS->>PS: Kiểm quyền (Role == Officer)
-    PS->>People: FindResearcher(resId)
-    PS->>Repo: FindProject(id)
-    PS->>P: AddMember(resId, ProjectRole.Leader)
+    PS->>People: FindResearcher(researcherId)
+    PS->>Repo: FindProject(projectId)
+    PS->>P: AddMember(researcherId, ProjectRole.Leader)
     P->>P: Kiểm tra Pending, thành viên trùng và chủ nhiệm
     PS->>Repo: Save(project)
     UI-->>CV: Đã gán chủ nhiệm
 
     %% UC03: Phê duyệt
     CV->>UI: 3. Phê duyệt đề tài (Menu 7)
-    UI->>PS: Approve(user, id)
+    UI->>PS: Approve(user, projectId)
     PS->>PS: Kiểm quyền Officer
-    PS->>Repo: FindProject(id)
+    PS->>Repo: FindProject(projectId)
     PS->>P: Approve("OFFICER", timestamp)
     P->>P: StateFor(Status)
+    create participant State as PendingState
+    P--)State: new PendingState()
+    Note over P,State: StateFor chọn và trả về State
     P->>State: Approve(project, "OFFICER", timestamp)
     State->>State: Kiểm tra Pending và đúng một chủ nhiệm
     State->>P: ChangeStatus(Active, "OFFICER", timestamp)
@@ -603,7 +624,7 @@ sequenceDiagram
 
 ### 5.2. UC04 - Khai báo nguồn và phân bổ kinh phí
 
-Sau khi tìm thấy đề tài, service kiểm tra trạng thái trước khi tạo khoản cấp. Đề tài đã hoàn thành giữ nguyên các khoản kinh phí đã lưu.
+Khai báo nguồn và phân bổ là hai lệnh menu độc lập. Lệnh 9 dùng một nguồn đã tồn tại. Sau khi tìm thấy đề tài, service kiểm tra trạng thái trước khi tạo khoản cấp. Đề tài đã hoàn thành giữ nguyên các khoản kinh phí đã lưu.
 
 ```mermaid
 sequenceDiagram
@@ -615,44 +636,56 @@ sequenceDiagram
 
     %% Khai báo nguồn
     CV->>UI: 1. Thêm nguồn tài trợ (Menu 8)
-    UI->>FS: SaveSource(user, id, name, type)
+    UI->>FS: SaveSource(user, sourceId, name, type)
     FS->>FS: Kiểm quyền Officer
     FS->>FS: Chuẩn hóa mã nguồn
     FS->>Repo: FindSource(normalizedId)
-    FS->>Repo: Save(new FundingSource(normalizedId, name, type))
+    create participant Source as FundingSource
+    FS--)Source: new FundingSource(normalizedId, name, type)
+    FS->>Repo: Save(source)
+    FS-->>UI: source
     UI-->>CV: Khai báo nguồn thành công
 
     %% Phân bổ kinh phí
     CV->>UI: 2. Phân bổ kinh phí (Menu 9)
-    UI->>FS: Allocate(user, allocId, projId, sourceId, amount, date)
+    UI->>FS: Allocate(user, allocationId, projectId, sourceId, amount, allocatedAt)
     FS->>FS: Kiểm quyền Officer
-    FS->>Repo: FindProject(projId)
+    FS->>Repo: FindProject(projectId)
     alt Đề tài đã Completed
-        FS-->>UI: Báo không thể cấp thêm kinh phí
+        FS-->>UI: Ném InvalidOperationException
         UI-->>CV: Hiển thị lỗi, giữ nguyên khoản cấp cũ
     else Đề tài còn Pending hoặc Active
         FS->>Repo: FindSource(sourceId)
         FS->>FS: Chuẩn hóa mã cấp
         FS->>Repo: Đọc Projects
         FS->>FS: Kiểm tra mã đợt cấp trên toàn hệ thống
-        FS->>FS: Tạo FundingAllocation, kiểm tra số tiền dương
+        create participant Allocation as FundingAllocation
+        FS--)Allocation: new FundingAllocation(...)
+        Note over Allocation: Số tiền dương
         FS->>Repo: Đọc Projects để tính tổng
-        FS->>FS: Kiểm tra tổng mới còn trong phạm vi decimal
+        FS->>FS: Kiểm tổng toàn hệ thống sau khi cộng khoản mới
         FS->>P: AddAllocation(allocation)
         P->>P: Kiểm tra mã đề tài và mã khoản cấp trong đề tài
         FS->>Repo: Save(project)
-        UI->>FS: TotalForProject(projId)
-        FS->>Repo: FindProject(projId)
+        FS-->>UI: allocation
+        UI->>FS: TotalForProject(projectId)
+        FS->>Repo: FindProject(projectId)
         FS->>P: Đọc TotalFunding
+        FS-->>UI: Tổng kinh phí của đề tài
         UI-->>CV: Phân bổ thành công, hiển thị tổng kinh phí cập nhật
     end
 ```
 
 ### 5.3. UC05–UC06 - Hội đồng và nghiệm thu
 
-Chủ tịch hội đồng ghi điểm. Chuyên viên gọi `ProjectService.Complete` với bằng chứng lấy từ dữ liệu nghiệm thu và đầu ra. Nhánh hoàn thành minh họa đề tài đang `Active`.
+Các mục 13–16 là các lệnh menu độc lập. UC06a – Ghi điểm nghiệm thu thuộc Chủ tịch hội đồng khi đề tài đang `Active`. UC06b – Xác nhận hoàn thành thuộc Chuyên viên khi có điểm và ít nhất một đầu ra. Dịch vụ chỉ kiểm tra đầu ra sau khi biết hội đồng đã có điểm. Trạng thái được kiểm qua State sau khi kiểm đủ bằng chứng.
 
 ```mermaid
+---
+config:
+  sequence:
+    mirrorActors: true
+---
 sequenceDiagram
     actor CV as Chuyên viên (Officer)
     actor CT as Chủ tịch HĐ (CouncilChair)
@@ -660,92 +693,135 @@ sequenceDiagram
     participant ES as EvaluationService
     participant PS as ProjectService
     participant Repo as IProjectRepository
-    participant Evidence as ICompletionEvidence
-    participant State as ActiveState
+    participant People as IPeopleRepository
     participant P as ResearchProject
-    participant C as EvaluationCouncil
     participant Results as IResultRepository
 
     %% UC05: Lập hội đồng
     CV->>UI: 1. Lập hội đồng nghiệm thu (menu 13)
-    UI->>ES: CreateCouncil(user, councilId, projId, date)
-    ES->>ES: Kiểm tra đề tài Active và chưa có hội đồng
-    ES->>C: new EvaluationCouncil(councilId, projId, date)
+    UI->>ES: CreateCouncil(user, councilId, projectId, evaluationDate)
+    Note over ES: Quyền Officer
+    ES->>Repo: FindProject(projectId)
+    Note over ES: Đề tài Active
+    ES->>Results: FindCouncil(normalizedCouncilId)
+    ES->>Results: FindCouncilByProject(projectId)
+    Note over ES: Mã mới và đề tài chưa có hội đồng
+    create participant C as EvaluationCouncil
+    ES--)C: new EvaluationCouncil(...)
     ES->>Results: Save(council)
+    ES-->>UI: council
     UI-->>CV: Tạo hội đồng thành công
     CV->>UI: Gán Chủ tịch tại menu 14
     UI->>ES: AssignMember(user, councilId, researcherId, Chairman)
+    Note over ES: Quyền Officer
+    ES->>People: FindResearcher(researcherId)
+    ES->>Results: FindCouncil(councilId)
     ES->>C: AddMember(researcherId, Chairman)
     ES->>Results: Save(council)
 
-    %% UC06: Ghi điểm nghiệm thu
+    %% UC06a: Ghi điểm nghiệm thu
     CT->>UI: 2. Nhập điểm đánh giá (menu 15)
     UI->>ES: RecordScore(user, councilId, score)
-    ES->>ES: Kiểm quyền CouncilChair và trạng thái Active
-    ES->>C: RecordScore(user.ResearcherId, score)
+    Note over ES: Quyền CouncilChair
+    ES->>Results: FindCouncil(councilId)
+    ES->>Repo: FindProject(council.ProjectId)
+    Note over ES: Đề tài Active
+    ES->>C: RecordScore(user.ResearcherId ?? string.Empty, score)
     C->>C: Kiểm tra đúng Chủ tịch và khoảng điểm 0 đến 10
     Note over C: Khóa danh sách thành viên từ điểm đầu tiên, kể cả điểm 0
     ES->>Results: Save(council)
     UI-->>CT: Đã lưu điểm nghiệm thu
 
-    %% UC06: Hoàn thành đề tài
+    %% UC06b: Xác nhận hoàn thành
     CV->>UI: 3. Xác nhận hoàn thành đề tài (menu 16)
-    UI->>PS: Complete(user, projId, Evidence)
-    PS->>PS: Kiểm quyền Officer
-    PS->>Repo: FindProject(projId)
-    PS->>Evidence: HasScoredCouncil(projId)
-    opt Đã có điểm hội đồng
-        PS->>Evidence: HasResearchOutput(projId)
+    create participant Evidence as ResultCompletionEvidence
+    UI--)Evidence: new ResultCompletionEvidence(_data)
+    UI->>PS: Complete(user, projectId, evidence)
+    Note over PS: Quyền Officer
+    PS->>Repo: FindProject(projectId)
+    PS->>Evidence: HasScoredCouncil(projectId)
+    Evidence-->>PS: hasScore
+    opt hasScore
+        PS->>Evidence: HasResearchOutput(projectId)
+        Evidence-->>PS: hasOutput
     end
-    alt Đủ điều kiện điểm và đầu ra
+    alt Có điểm và đầu ra
         PS->>P: Complete("OFFICER", timestamp)
         P->>P: StateFor(Status)
-        P->>State: Complete(project, "OFFICER", timestamp)
-        State->>P: ChangeStatus(Completed, "OFFICER", timestamp)
-        P->>P: Ghi nhận ProjectStatusHistory
-        PS->>Repo: Save(project)
-        UI-->>CV: Đề tài chính thức chuyển trạng thái Completed
-    else Thiếu điểm hoặc thiếu đầu ra
+        alt Status là Active
+            create participant State as ActiveState
+            P--)State: new ActiveState()
+            P->>State: Complete(project, "OFFICER", timestamp)
+            State->>P: ChangeStatus(Completed, "OFFICER", timestamp)
+            P->>P: Ghi nhận ProjectStatusHistory
+            PS->>Repo: Save(project)
+            UI-->>CV: Đề tài đã chuyển sang Completed
+        else Status là Pending hoặc Completed
+            P-->>PS: State hiện tại ném InvalidOperationException
+            PS-->>UI: Chuyển tiếp lỗi
+            UI-->>CV: Báo lỗi trạng thái
+        end
+    else Thiếu điểm hoặc đầu ra
         PS-->>UI: Ném ngoại lệ InvalidOperationException
-        UI-->>CV: Báo lỗi: Chưa đủ điều kiện nghiệm thu/đầu ra
+        UI-->>CV: Báo thiếu điểm hoặc đầu ra
     end
 ```
 
 ### 5.4. UC07 - Ghi nhận đầu ra qua Factory Method
 
-Factory tạo đối tượng theo loại đầu ra. Service kiểm tra tham chiếu và các ràng buộc cần tra kho trước khi lưu. Menu 17 tạo liên kết đầu tiên khi ghi bài báo. Khi mở JSON, kho kiểm tra mỗi bài báo có ít nhất một liên kết và từ chối hội đồng hoặc đầu ra của đề tài `Pending`. Đầu ra hợp lệ đã lưu của đề tài `Completed` vẫn được nạp.
+Factory tạo đối tượng theo loại đầu ra. Sơ đồ minh họa hai lựa chọn menu ở luồng thành công. Menu 17 tạo liên kết đầu tiên khi ghi bài báo. Khi mở JSON, kho kiểm tra mỗi bài báo có ít nhất một liên kết và từ chối hội đồng hoặc đầu ra của đề tài `Pending`. Đầu ra hợp lệ đã lưu của đề tài `Completed` vẫn được nạp.
 
 ```mermaid
 sequenceDiagram
     actor NNC as Nhà nghiên cứu (Researcher)
     participant UI as ConsoleMenu
     participant OS as OutputService
-    participant Factory as PaperCreator / DeliverableCreator
-    participant Out as ResearchOutput (Paper / ProjectDeliverable)
+    participant PC as PaperCreator
+    participant DC as DeliverableCreator
     participant Repo as IResultRepository
 
     NNC->>UI: 1. Chọn loại đầu ra (Bài báo hoặc Sản phẩm)
     alt Chọn ghi bài báo (menu 17)
         UI->>NNC: Hỏi y hoặc n cho từng tác giả liên hệ, hỏi lại nếu nhập sai
         UI->>OS: AddPaper(user, paperDraft)
-        OS->>OS: Kiểm quyền và người dùng tham gia đề tài
-        OS->>OS: Kiểm tra người ghi là tác giả và hồ sơ tác giả tồn tại
-        OS->>Factory: Build(paperDraft)
-        Factory->>Factory: Create(paperDraft)
-        Factory->>Out: new Paper(...) và AddAuthor(...)
-        Factory->>Out: Validate() (danh sách tác giả)
-        OS->>Repo: Kiểm tra mã và DOI nếu có
+        Note over OS: Quyền Researcher, thành viên đề tài Active
+        Note over OS: Người ghi là tác giả, các hồ sơ tác giả tồn tại
+        OS->>PC: Build(paperDraft)
+        PC->>PC: Create(paperDraft)
+        create participant Paper as Paper
+        PC--)Paper: new Paper(...)
+        loop Với mỗi tác giả
+            PC->>Paper: AddAuthor(researcherId, order, isCorresponding)
+        end
+        PC-->>PC: Create trả paper
+        PC->>Paper: Validate()
+        PC-->>OS: paper
+        OS->>Repo: FindPaper(paper.Id)
+        opt Có DOI
+            OS->>Repo: Đọc Papers để kiểm tra DOI trùng
+        end
         OS->>Repo: SavePaperWithLink(paper, project.Id)
+        OS-->>UI: paper
+        UI->>Paper: GetDisplaySummary()
+        Paper-->>UI: Mô tả bài báo
+        UI-->>NNC: Hiển thị bài báo đã ghi nhận
     else Chọn ghi sản phẩm bàn giao (menu 18)
         UI->>OS: AddDeliverable(user, deliverableDraft)
-        OS->>OS: Kiểm quyền và người dùng tham gia đề tài
-        OS->>Repo: Tra loại sản phẩm
-        OS->>Factory: Build(deliverableDraft)
-        Factory->>Factory: Create(deliverableDraft)
-        Factory->>Out: new ProjectDeliverable(...)
-        Factory->>Out: Validate() (số lượng dương)
-        OS->>Repo: Kiểm tra mã sản phẩm
+        Note over OS: Quyền Researcher, thành viên đề tài Active
+        OS->>Repo: FindDeliverableType(deliverableDraft.TypeId)
+        OS->>DC: Build(deliverableDraft)
+        DC->>DC: Create(deliverableDraft)
+        create participant Deliverable as ProjectDeliverable
+        DC--)Deliverable: new ProjectDeliverable(...)
+        DC-->>DC: Create trả deliverable
+        DC->>Deliverable: Validate()
+        DC-->>OS: deliverable
+        OS->>Repo: FindDeliverable(deliverable.Id)
+        Note over OS: Mã mới và mã đề tài khớp
         OS->>Repo: Save(deliverable)
+        OS-->>UI: deliverable
+        UI->>Deliverable: GetDisplaySummary()
+        Deliverable-->>UI: Mô tả sản phẩm
+        UI-->>NNC: Hiển thị sản phẩm đã ghi nhận
     end
-    UI-->>NNC: Đã ghi nhận đầu ra và liên kết đề tài thành công
 ```
